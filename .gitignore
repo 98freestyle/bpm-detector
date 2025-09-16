@@ -1,0 +1,51 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Dependency directories
+node_modules
+backend/venv/
+
+# Build output
+dist
+dist-ssr
+
+# Local environment overrides
+*.local
+.env
+backend/.env
+
+# System files
+.DS_Store
+Thumbs.db
+
+# IDE/editor settings
+.vscode/*
+!.vscode/extensions.json
+.idea
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Python
+backend/__pycache__/
+backend/*.pyc
+*.py[cod]
+*$py.class
+
+# Audio working files
+*.wav
+*.mp3
+*.flac
+*.m4a
+
+# Temporary files
+*.tmp
+*.temp

@@ -1,0 +1,17 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Global body styles */
+body {
+  @apply min-h-screen flex flex-col scroll-smooth font-sans text-gray-100;
+
+  /* Rich gradient background with subtle noise */
+  background:
+    linear-gradient(to bottom right, #0f0f11, #18181b, #000000),
+    url("https://grainy-gradients.vercel.app/noise.svg");
+  background-size: cover, 200px;
+  background-repeat: no-repeat, repeat;
+  background-attachment: fixed;
+  background-blend-mode: overlay;
+}
