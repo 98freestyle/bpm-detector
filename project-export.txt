@@ -1,0 +1,750 @@
+PROJECT EXPORT
+
+PROJECT STRUCTURE:
+
+📁 backend
+  📄 app.py
+  📄 requirements.txt
+📁 frontend
+  📁 public
+    📄 vite.svg
+  📁 src
+    📁 components
+      📄 Dropzone.jsx
+      📄 Features.jsx
+      📄 Footer.jsx
+      📄 Hero.jsx
+      📄 Loader.jsx
+      📄 Navbar.jsx
+      📄 Result.jsx
+    📁 utils
+      📄 useBPMDetector.js
+    📄 App.jsx
+    📄 index.css
+    📄 main.jsx
+  📄 eslint.config.js
+  📄 index.html
+  📄 package.json
+  📄 postcss.config.js
+  📄 tailwind.config.js
+  📄 vite.config.js
+📄 .gitignore
+📄 README.md
+
+FILES:
+
+=== .gitignore ===
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Dependency directories
+node_modules
+backend/venv/
+
+# Build output
+dist
+dist-ssr
+
+# Local environment overrides
+*.local
+.env
+backend/.env
+
+# System files
+.DS_Store
+Thumbs.db
+
+# IDE/editor settings
+.vscode/*
+!.vscode/extensions.json
+.idea
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Python
+backend/__pycache__/
+backend/*.pyc
+*.py[cod]
+*$py.class
+
+# Audio working files
+*.wav
+*.mp3
+*.flac
+*.m4a
+
+# Temporary files
+*.tmp
+*.temp
+
+========================================
+
+=== README.md ===
+
+# BPM Analyzer
+
+A modern web application for detecting BPM (beats per minute) in audio files.
+
+## Architecture
+
+- **Frontend**: React + Vite + TailwindCSS
+- **Backend**: Python Flask + librosa
+- **Processing**: Server-side audio analysis for high accuracy
+
+## Development Setup
+
+### Frontend
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+### Backend  
+```bash
+cd backend
+python -m venv venv
+venv\Scripts\activate  # Windows
+pip install flask librosa flask-cors
+python app.py
+```
+
+## Features
+- Drag & drop file upload
+- High-accuracy BPM detection for electronic music
+- Modern responsive UI
+- Fast server-side processing
+
+========================================
+
+=== backend/app.py ===
+
+from flask import Flask, request, jsonify
+from flask_cors import CORS
+import essentia
+import essentia.standard as es
+import tempfile
+import os
+
+app = Flask(__name__)
+CORS(app)
+
+@app.route('/analyze', methods=['POST'])
+def analyze_bpm():
+    if 'audio' not in request.files:
+        return jsonify({'error': 'No audio file'}), 400
+    
+    file = request.files['audio']
+    temp_path = None
+    
+    try:
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.wav') as tmp:
+            temp_path = tmp.name
+            file.save(tmp.name)
+        
+        # Load audio with Essentia
+        loader = es.MonoLoader(filename=temp_path)
+        audio = loader()
+        
+        # Use RhythmExtractor2013 - the actual algorithm
+        rhythm_extractor = es.RhythmExtractor2013()
+        bpm, beats, beats_confidence, _, beats_intervals = rhythm_extractor(audio)
+        
+        return jsonify({'bpm': int(round(bpm))})
+        
+    except Exception as e:
+        print(f"Error: {e}")
+        return jsonify({'error': str(e)}), 500
+        
+    finally:
+        if temp_path and os.path.exists(temp_path):
+            try:
+                os.unlink(temp_path)
+            except:
+                pass
+
+if __name__ == '__main__':
+    app.run(debug=True)
+
+========================================
+
+=== backend/requirements.txt ===
+
+Flask==3.0.0
+aubio==0.4.9
+flask-cors==4.0.0
+numpy==1.24.3
+
+========================================
+
+=== frontend/eslint.config.js ===
+
+import js from '@eslint/js'
+import globals from 'globals'
+import reactHooks from 'eslint-plugin-react-hooks'
+import reactRefresh from 'eslint-plugin-react-refresh'
+import { defineConfig, globalIgnores } from 'eslint/config'
+
+export default defineConfig([
+  globalIgnores(['dist']),
+  {
+    files: ['**/*.{js,jsx}'],
+    extends: [
+      js.configs.recommended,
+      reactHooks.configs['recommended-latest'],
+      reactRefresh.configs.vite,
+    ],
+    languageOptions: {
+      ecmaVersion: 2020,
+      globals: globals.browser,
+      parserOptions: {
+        ecmaVersion: 'latest',
+        ecmaFeatures: { jsx: true },
+        sourceType: 'module',
+      },
+    },
+    rules: {
+      'no-unused-vars': ['error', { varsIgnorePattern: '^[A-Z_]' }],
+    },
+  },
+])
+
+
+========================================
+
+=== frontend/index.html ===
+
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BPM Analyzer</title>
+</head>
+
+<body class="bg-gray-50 text-gray-900">
+  <div id="root"></div>
+  <script type="module" src="/src/main.jsx"></script>
+</body>
+
+</html>
+
+========================================
+
+=== frontend/package.json ===
+
+{
+  "name": "bpm-analyzer",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "lint": "eslint .",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "framer-motion": "^12.23.12",
+    "lucide-react": "^0.544.0",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.33.0",
+    "@tailwindcss/postcss": "^4.1.13",
+    "@types/react": "^19.1.10",
+    "@types/react-dom": "^19.1.7",
+    "@vitejs/plugin-react": "^5.0.0",
+    "autoprefixer": "^10.4.21",
+    "eslint": "^9.33.0",
+    "eslint-plugin-react-hooks": "^5.2.0",
+    "eslint-plugin-react-refresh": "^0.4.20",
+    "globals": "^16.3.0",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^3.4.14",
+    "vite": "^7.1.2"
+  }
+}
+
+
+========================================
+
+=== frontend/postcss.config.js ===
+
+export default {
+  plugins: {
+    tailwindcss: {},
+    autoprefixer: {},
+  },
+}
+
+
+========================================
+
+=== frontend/public/vite.svg ===
+
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" aria-hidden="true" role="img" class="iconify iconify--logos" width="31.88" height="32" preserveAspectRatio="xMidYMid meet" viewBox="0 0 256 257"><defs><linearGradient id="IconifyId1813088fe1fbc01fb466" x1="-.828%" x2="57.636%" y1="7.652%" y2="78.411%"><stop offset="0%" stop-color="#41D1FF"></stop><stop offset="100%" stop-color="#BD34FE"></stop></linearGradient><linearGradient id="IconifyId1813088fe1fbc01fb467" x1="43.376%" x2="50.316%" y1="2.242%" y2="89.03%"><stop offset="0%" stop-color="#FFEA83"></stop><stop offset="8.333%" stop-color="#FFDD35"></stop><stop offset="100%" stop-color="#FFA800"></stop></linearGradient></defs><path fill="url(#IconifyId1813088fe1fbc01fb466)" d="M255.153 37.938L134.897 252.976c-2.483 4.44-8.862 4.466-11.382.048L.875 37.958c-2.746-4.814 1.371-10.646 6.827-9.67l120.385 21.517a6.537 6.537 0 0 0 2.322-.004l117.867-21.483c5.438-.991 9.574 4.796 6.877 9.62Z"></path><path fill="url(#IconifyId1813088fe1fbc01fb467)" d="M185.432.063L96.44 17.501a3.268 3.268 0 0 0-2.634 3.014l-5.474 92.456a3.268 3.268 0 0 0 3.997 3.378l24.777-5.718c2.318-.535 4.413 1.507 3.936 3.838l-7.361 36.047c-.495 2.426 1.782 4.5 4.151 3.78l15.304-4.649c2.372-.72 4.652 1.36 4.15 3.788l-11.698 56.621c-.732 3.542 3.979 5.473 5.943 2.437l1.313-2.028l72.516-144.72c1.215-2.423-.88-5.186-3.54-4.672l-25.505 4.922c-2.396.462-4.435-1.77-3.759-4.114l16.646-57.705c.677-2.35-1.37-4.583-3.769-4.113Z"></path></svg>
+
+========================================
+
+=== frontend/src/App.jsx ===
+
+// Root app layout wrapper
+import Navbar from "./components/Navbar";
+import Hero from "./components/Hero";
+import Features from "./components/Features";
+import Footer from "./components/Footer";
+
+function App() {
+  return (
+    // Dark background as default theme
+    <div className="min-h-screen flex flex-col bg-gray-950 text-gray-100">
+      <Navbar />
+      <Hero />
+      <Features />
+      <Footer />
+    </div>
+  );
+}
+
+export default App;
+
+
+========================================
+
+=== frontend/src/components/Dropzone.jsx ===
+
+import { useState } from "react";
+import { motion } from "framer-motion";
+import { Upload } from "lucide-react"; // lightweight icon library
+
+function Dropzone({ onFile }) {
+    const [dragOver, setDragOver] = useState(false);
+
+    function handleDrop(e) {
+        e.preventDefault();
+        setDragOver(false);
+        const file = e.dataTransfer.files[0];
+        onFile(file);
+    }
+
+    function handleBrowse(e) {
+        const file = e.target.files[0];
+        onFile(file);
+    }
+
+    return (
+        <motion.label
+            htmlFor="file-upload"
+            className={`relative flex flex-col items-center justify-center p-12 rounded-2xl cursor-pointer transition-all
+        border-2 border-dashed ${dragOver
+                    ? "border-brand bg-brand/10 shadow-lg scale-105"
+                    : "border-gray-600 hover:border-brand hover:bg-gray-900/60"
+                }`}
+            onDragOver={(e) => {
+                e.preventDefault();
+                setDragOver(true);
+            }}
+            onDragLeave={() => setDragOver(false)}
+            onDrop={handleDrop}
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+        >
+            {/* Icon */}
+            <Upload className="w-10 h-10 text-brand mb-4" />
+
+            {/* Text */}
+            <p className="text-gray-300 text-lg">
+                <span className="font-semibold text-brand">Click to browse</span> or
+                drag & drop your audio file here
+            </p>
+
+            {/* Hidden input */}
+            <input
+                id="file-upload"
+                type="file"
+                accept="audio/*"
+                onChange={handleBrowse}
+                className="hidden"
+            />
+        </motion.label>
+    );
+}
+
+export default Dropzone;
+
+
+========================================
+
+=== frontend/src/components/Features.jsx ===
+
+import { motion } from "framer-motion";
+
+function Features() {
+    const features = [
+        { title: "🎵 Drag & Drop", desc: "Quick and easy file upload system." },
+        { title: "⚡ Fast Detection", desc: "Powered by Web Audio API analysis." },
+        { title: "💻 No Backend", desc: "Runs fully in your browser, no uploads required." },
+        { title: "🌙 Free Forever", desc: "Lightweight, open-source, and free." },
+    ];
+
+    return (
+        <section id="features" className="py-16 bg-gray-950 border-t border-gray-800">
+            <div className="max-w-6xl mx-auto px-6">
+                <h3 className="text-3xl font-bold text-center text-gray-100 mb-12">
+                    Why use BPM Analyzer?
+                </h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+                    {features.map((f, i) => (
+                        <motion.div
+                            key={i}
+                            className="p-6 bg-gray-900 rounded-xl shadow-sm hover:shadow-md border border-gray-800"
+                            whileHover={{ scale: 1.05 }}
+                        >
+                            <h4 className="font-semibold text-lg mb-2 text-brand">{f.title}</h4>
+                            <p className="text-gray-400">{f.desc}</p>
+                        </motion.div>
+                    ))}
+                </div>
+            </div>
+        </section>
+    );
+}
+
+export default Features;
+
+
+========================================
+
+=== frontend/src/components/Footer.jsx ===
+
+function Footer() {
+    return (
+        <footer className="bg-gray-900 text-gray-400 py-6 mt-auto border-t border-gray-800">
+            <div className="max-w-6xl mx-auto px-6 text-center">
+                <p>&copy; {new Date().getFullYear()} BPM Analyzer. All rights reserved.</p>
+            </div>
+        </footer>
+    );
+}
+
+export default Footer;
+
+
+========================================
+
+=== frontend/src/components/Hero.jsx ===
+
+import { useState } from "react";
+import Dropzone from "./Dropzone";
+import Loader from "./Loader";
+import Result from "./Result";
+import { motion } from "framer-motion";
+import { useBPMDetector } from "../utils/useBPMDetector";
+
+function Hero() {
+    // State for file analysis results
+    const [fileName, setFileName] = useState(null);
+    const [bpm, setBpm] = useState(null);
+    const [error, setError] = useState(null);
+    const [loading, setLoading] = useState(false);
+
+    // Load BPM detector
+    const bpmDetector = useBPMDetector();
+
+    /**
+     * Handles audio file upload + BPM analysis
+     */
+    async function handleFile(file) {
+        if (!file) return;
+
+        setError(null);
+        setBpm(null);
+        setLoading(true);
+
+        // Validate file type
+        if (!file.type.startsWith("audio/")) {
+            setError("Only audio files are supported.");
+            setLoading(false);
+            return;
+        }
+
+        setFileName(file.name);
+
+        // Validate file size (150MB limit)
+        const MAX_FILE_SIZE = 150 * 1024 * 1024;
+        if (file.size > MAX_FILE_SIZE) {
+            setError("File too large. Max allowed is 150MB.");
+            setLoading(false);
+            return;
+        }
+
+        try {
+            // Send file to backend API
+            const result = await bpmDetector.detect(file);
+
+            console.log("Backend result:", result);
+
+            if (result && result.bpm) {
+                setBpm(result.bpm);
+            } else {
+                setError("Could not detect BPM.");
+            }
+
+            setLoading(false);
+        } catch (err) {
+            console.error("BPM detection error:", err);
+            setError("BPM detection failed.");
+            setLoading(false);
+        }
+    }
+
+    return (
+        <motion.header
+            className="flex-1 flex items-center justify-center text-center px-6 py-20 bg-gradient-to-r from-brand-dark to-brand-light"
+            initial={{ opacity: 0, y: 60 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8 }}
+        >
+            <div className="max-w-3xl w-full">
+                {/* Hero headline */}
+                <h2 className="text-5xl font-extrabold leading-tight">
+                    Detect the <span className="text-accent">BPM</span> of your music instantly
+                </h2>
+                <p className="mt-6 text-lg text-gray-200">
+                    Upload or drag & drop your track — get clean, accurate BPM analysis in seconds.
+                </p>
+
+                {/* Analyzer Card */}
+                <div className="mt-10 w-full max-w-xl mx-auto bg-gray-900 p-8 rounded-2xl shadow-lg border border-gray-700">
+                    <Dropzone onFile={handleFile} />
+                    {loading && <Loader />}
+                    {error && <p className="text-red-400 font-medium mt-4">{error}</p>}
+                    <Result fileName={fileName} bpm={bpm} />
+                </div>
+            </div>
+        </motion.header>
+    );
+}
+
+export default Hero;
+
+========================================
+
+=== frontend/src/components/Loader.jsx ===
+
+function Loader() {
+    return (
+        <div className="flex justify-center mt-6">
+            <div className="w-8 h-8 border-4 border-brand border-t-transparent rounded-full animate-spin"></div>
+        </div>
+    );
+}
+
+export default Loader;
+
+
+========================================
+
+=== frontend/src/components/Navbar.jsx ===
+
+import { useState } from "react";
+import { motion } from "framer-motion";
+
+function Navbar() {
+    const [menuOpen, setMenuOpen] = useState(false);
+
+    return (
+        <motion.nav
+            className="w-full bg-gray-900 shadow-md border-b border-gray-800 sticky top-0 z-10"
+            initial={{ y: -80, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ duration: 0.6 }}
+        >
+            <div className="max-w-6xl mx-auto px-6 py-4 flex justify-between items-center">
+                {/* Brand */}
+                <h1 className="text-xl font-bold text-brand">BPM Analyzer</h1>
+
+                {/* Desktop links */}
+                <div className="hidden md:flex gap-6 text-gray-300">
+                    <a href="#features" className="hover:text-brand">Features</a>
+                    <a href="#about" className="hover:text-brand">About</a>
+                    <a href="#contact" className="hover:text-brand">Contact</a>
+                </div>
+
+                {/* Mobile menu button */}
+                <button
+                    className="md:hidden p-2 rounded hover:bg-gray-800"
+                    onClick={() => setMenuOpen(!menuOpen)}
+                >
+                    ☰
+                </button>
+            </div>
+
+            {/* Mobile dropdown */}
+            {menuOpen && (
+                <div className="md:hidden px-6 pb-4 space-y-2 text-gray-300 bg-gray-900 border-t border-gray-800">
+                    <a href="#features" className="block hover:text-brand">Features</a>
+                    <a href="#about" className="block hover:text-brand">About</a>
+                    <a href="#contact" className="block hover:text-brand">Contact</a>
+                </div>
+            )}
+        </motion.nav>
+    );
+}
+
+export default Navbar;
+
+
+========================================
+
+=== frontend/src/components/Result.jsx ===
+
+function Result({ fileName, bpm }) {
+    if (!fileName && !bpm) return null;
+
+    return (
+        <div className="mt-6">
+            {fileName && (
+                <p className="text-gray-700">
+                    <span className="font-medium">Loaded:</span> {fileName}
+                </p>
+            )}
+            {bpm && (
+                <h2 className="text-3xl font-bold text-brand mt-4">{bpm} BPM</h2>
+            )}
+        </div>
+    );
+}
+
+export default Result;
+
+
+========================================
+
+=== frontend/src/index.css ===
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Global body styles */
+body {
+  @apply min-h-screen flex flex-col scroll-smooth font-sans text-gray-100;
+
+  /* Rich gradient background with subtle noise */
+  background:
+    linear-gradient(to bottom right, #0f0f11, #18181b, #000000),
+    url("https://grainy-gradients.vercel.app/noise.svg");
+  background-size: cover, 200px;
+  background-repeat: no-repeat, repeat;
+  background-attachment: fixed;
+  background-blend-mode: overlay;
+}
+
+========================================
+
+=== frontend/src/main.jsx ===
+
+import { StrictMode } from "react";
+import { createRoot } from "react-dom/client";
+import "./index.css";
+import App from "./App.jsx";
+
+createRoot(document.getElementById("root")).render(
+  <StrictMode>
+    <App />
+  </StrictMode>
+);
+
+
+========================================
+
+=== frontend/src/utils/useBPMDetector.js ===
+
+export function useBPMDetector() {
+    return {
+        detect: async (audioFile) => {
+            const formData = new FormData();
+            formData.append('audio', audioFile);
+
+            const response = await fetch('http://127.0.0.1:5000/analyze', {
+                method: 'POST',
+                body: formData
+            });
+
+            if (!response.ok) {
+                throw new Error('Backend analysis failed');
+            }
+
+            return await response.json();
+        }
+    };
+}
+
+========================================
+
+=== frontend/tailwind.config.js ===
+
+/** @type {import('tailwindcss').Config} */
+export default {
+  darkMode: "class", // enable dark mode via class
+  content: ["./index.html", "./src/**/*.{js,jsx,ts,tsx}"],
+  theme: {
+    extend: {
+      fontFamily: {
+        sans: ["Inter", "ui-sans-serif", "system-ui"], // Inter as default
+      },
+      colors: {
+        brand: {
+          light: "#A78BFA",
+          DEFAULT: "#7C3AED",
+          dark: "#4C1D95",
+        },
+        accent: "#10B981",
+      },
+    },
+  },
+  plugins: [],
+}
+
+
+========================================
+
+=== frontend/vite.config.js ===
+
+import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react";
+
+// Clean Vite config for React + Essentia.js
+export default defineConfig({
+  plugins: [react()],
+  build: {
+    assetsInlineLimit: 0, // ensure WASM files aren’t inlined
+  },
+  server: {
+    port: 5173,
+    open: true,
+  },
+});
+
+
+========================================
+

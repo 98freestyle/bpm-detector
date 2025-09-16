@@ -4,7 +4,7 @@ export function useBPMDetector() {
             const formData = new FormData();
             formData.append('audio', audioFile);
 
-            const response = await fetch('http://127.0.0.1:5000/analyze', {
+            const response = await fetch('/api/analyze', {
                 method: 'POST',
                 body: formData
             });
