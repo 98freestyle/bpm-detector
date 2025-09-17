@@ -70,6 +70,7 @@ def analyze_bpm():
         
         # Round BPM to nearest integer
         bpm_result = int(round(bpm))
+        bpm_result = round(float(bpm), 1) 
         
         total_time = time.time() - start_time
         logger.info(f"Total processing time: {total_time:.2f}s, BPM: {bpm_result}")
