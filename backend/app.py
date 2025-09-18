@@ -62,7 +62,7 @@ def analyze_bpm():
         logger.info(f"Audio trimmed in {trim_time - load_time:.2f}s")
         
         # Use optimized RhythmExtractor2013
-        rhythm_extractor = es.RhythmExtractor2013(method="multifeature")
+        rhythm_extractor = es.RhythmExtractor2013(method="degara")
         bpm, beats, beats_confidence, _, beats_intervals = rhythm_extractor(audio)
         
         analysis_time = time.time()
