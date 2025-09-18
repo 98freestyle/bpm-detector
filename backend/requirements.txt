@@ -2,3 +2,5 @@ Flask==3.0.0
 essentia-tensorflow
 flask-cors==4.0.0
 numpy
+python-magic==0.4.27
+psutil==5.9.6
