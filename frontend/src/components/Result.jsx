@@ -13,7 +13,7 @@ function Result({ fileName, bpm, totalTime }) {
 
             {bpm && (
                 <div className="space-y-3">
-                    <h2 className="text-3xl font-bold text-brand">{bpm} BPM</h2>
+                    <h2 className="text-3xl font-bold text-brand">{Math.round(bpm)} BPM</h2>
 
                     {totalTime && (
                         <div className="flex items-center justify-center gap-2 text-sm text-gray-400">

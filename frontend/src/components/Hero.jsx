@@ -4,6 +4,7 @@ import Loader from "./Loader";
 import Result from "./Result";
 import { motion } from "framer-motion";
 import { useBPMDetector } from "../utils/useBPMDetector";
+import { AlertTriangle, CheckCircle, XCircle } from "lucide-react";
 
 function Hero() {
     // State for file analysis results
@@ -17,93 +18,147 @@ function Hero() {
     // Load BPM detector
     const bpmDetector = useBPMDetector();
 
+    // Enhanced error handling with user-friendly messages
+    function getErrorMessage(error, context = '') {
+        const errorStr = error?.toString?.() || error || 'Unknown error';
+
+        // Network-related errors
+        if (errorStr.includes('fetch') || errorStr.includes('network') || errorStr.includes('ERR_NETWORK')) {
+            return "Network connection failed. Please check your internet connection and try again.";
+        }
+
+        if (errorStr.includes('timeout') || errorStr.includes('TIMEOUT')) {
+            return "Upload timed out. Your file may be too large or connection too slow. Try a smaller file or check your internet.";
+        }
+
+        if (errorStr.includes('413') || errorStr.includes('too large')) {
+            return "File too large for server processing. Please try a smaller file (under 150MB).";
+        }
+
+        if (errorStr.includes('415') || errorStr.includes('unsupported')) {
+            return "Unsupported file format. Please use MP3, WAV, FLAC, AAC, OGG, or M4A files.";
+        }
+
+        if (errorStr.includes('429') || errorStr.includes('Too Many Requests') || errorStr.includes('rate limit')) {
+            return "Rate limit exceeded. Please wait a moment before uploading another file.";
+        }
+
+        if (errorStr.includes('400') || errorStr.includes('bad request')) {
+            return "Invalid file format. Please ensure you're uploading a valid audio file.";
+        }
+
+        if (errorStr.includes('500') || errorStr.includes('server error')) {
+            return "Server processing error. Our system may be temporarily overloaded. Please try again in a moment.";
+        }
+
+        if (errorStr.includes('503') || errorStr.includes('unavailable')) {
+            return "Service temporarily unavailable. Please try again in a few minutes.";
+        }
+
+        // Audio processing errors
+        if (errorStr.includes('decode') || errorStr.includes('corrupt')) {
+            return "Audio file appears corrupted or damaged. Please try a different file or re-export your audio.";
+        }
+
+        if (errorStr.includes('analysis') || errorStr.includes('BPM')) {
+            return "BPM detection failed. Your audio may be too quiet, have an irregular rhythm, or be an unsupported format.";
+        }
+
+        // Default user-friendly message
+        return `Upload failed: ${context || 'Please try again with a different file or check your connection.'}`;
+    }
+
+    function handleError(errorMessage) {
+        setError(errorMessage);
+        setLoading(false);
+        setUploadStatus("");
+        setBpm(null);
+        setTotalProcessingTime(null);
+        console.error("BPM Analysis Error:", errorMessage);
+    }
+
+    function clearError() {
+        setError(null);
+    }
+
     /**
-     * Handles audio file upload + BPM analysis with detailed timing
+     * Handles audio file upload + BPM analysis with comprehensive error handling
      */
     async function handleFile(file) {
-        if (!file) return;
+        if (!file) {
+            handleError("No file provided. Please select an audio file.");
+            return;
+        }
 
-        // Start user timer
-        const userStartTime = performance.now();
-        console.log(`[UPLOAD] Starting upload for: ${file.name} (${(file.size / 1024 / 1024).toFixed(1)}MB)`);
+        // Clear any previous errors
+        clearError();
 
-        setError(null);
+        // Start timing
+        const startTime = performance.now();
+        const uploadStartTime = performance.now();
+
         setBpm(null);
         setTotalProcessingTime(null);
         setLoading(true);
-        setUploadStatus("Preparing upload...");
-
-        // Validate file type
-        if (!file.type.startsWith("audio/")) {
-            setError("Only audio files are supported.");
-            setLoading(false);
-            setUploadStatus("");
-            return;
-        }
-
+        setUploadStatus("Validating file...");
         setFileName(file.name);
 
-        // Validate file size (150MB limit)
-        const MAX_FILE_SIZE = 150 * 1024 * 1024;
-        if (file.size > MAX_FILE_SIZE) {
-            setError("File too large. Maximum 150MB allowed.");
-            setLoading(false);
-            setUploadStatus("");
-            return;
-        }
-
         try {
-            console.log(`[UPLOAD] File validated, starting network request...`);
-            const uploadStartTime = performance.now();
             setUploadStatus(`Uploading ${(file.size / 1024 / 1024).toFixed(1)}MB file...`);
 
-            // Send file to backend API with detailed logging
+            // Send file to backend API with progress tracking
             const result = await bpmDetector.detectWithProgress(file, (progress) => {
                 if (progress.lengthComputable) {
                     const percent = Math.round((progress.loaded / progress.total) * 100);
                     setUploadStatus(`Uploading: ${percent}% (${(progress.loaded / 1024 / 1024).toFixed(1)}MB / ${(progress.total / 1024 / 1024).toFixed(1)}MB)`);
-                    console.log(`[UPLOAD] Progress: ${percent}% - ${(progress.loaded / 1024 / 1024).toFixed(1)}MB uploaded`);
                 } else {
-                    setUploadStatus("Processing on server...");
+                    setUploadStatus("Processing audio on server...");
                 }
             });
 
             const uploadEndTime = performance.now();
             const uploadTime = ((uploadEndTime - uploadStartTime) / 1000).toFixed(2);
-            console.log(`[UPLOAD] Upload + processing completed in ${uploadTime}s`);
-
-            console.log("[UPLOAD] Backend result:", result);
             setUploadStatus("");
 
-            if (result && result.bpm) {
-                setBpm(result.bpm);
-
-                // Calculate total user experience time
-                const userEndTime = performance.now();
-                const totalTime = ((userEndTime - userStartTime) / 1000).toFixed(2);
-                setTotalProcessingTime(totalTime);
-
-                console.log(`[UPLOAD] *** COMPLETE ANALYSIS ***`);
-                console.log(`[UPLOAD] Total user wait time: ${totalTime}s`);
-                console.log(`[UPLOAD] Upload speed: ${((file.size / 1024 / 1024) / parseFloat(uploadTime)).toFixed(2)} MB/s`);
-                console.log(`[UPLOAD] Backend processing: ${result.processing_time || 'N/A'}s`);
-                console.log(`[UPLOAD] Network overhead: ${(parseFloat(uploadTime) - parseFloat(result.processing_time || 0)).toFixed(2)}s`);
-                console.log(`[UPLOAD] BPM detected: ${result.bpm}`);
-
-            } else {
-                setError("Could not detect BPM.");
+            // Validate backend response
+            if (!result) {
+                handleError("No response from server. Please try again or check your connection.");
+                return;
             }
 
-            setLoading(false);
-        } catch (err) {
-            console.error("[UPLOAD] Upload/analysis error:", err);
-            const userEndTime = performance.now();
-            const totalTime = ((userEndTime - userStartTime) / 1000).toFixed(2);
-            console.log(`[UPLOAD] Analysis failed after ${totalTime}s`);
+            if (result.error) {
+                handleError(getErrorMessage(result.error, result.error));
+                return;
+            }
 
-            setError("BPM detection failed. Please try again.");
+            if (!result.bpm || result.bpm <= 0) {
+                handleError("BPM detection failed. Your audio may have an irregular rhythm, be too quiet, or contain no clear beat pattern.");
+                return;
+            }
+
+            // Success!
+            setBpm(result.bpm);
+
+            // Calculate timing
+            const endTime = performance.now();
+            const totalTime = ((endTime - startTime) / 1000).toFixed(2);
+            setTotalProcessingTime(totalTime);
+
+            // Clean filename for logging
+            const displayName = file.name.length > 30 ?
+                file.name.substring(0, 30) + '...' :
+                file.name;
+
+            // Single comprehensive log with corrected timing
+            console.log(`🎵 ${result.bpm} BPM detected | ${displayName} (${(file.size / 1024 / 1024).toFixed(1)}MB) | ${totalTime}s total (${result.processing_time || 'N/A'}s processing)`);
             setLoading(false);
-            setUploadStatus("");
+
+        } catch (err) {
+            const endTime = performance.now();
+            const totalTime = ((endTime - startTime) / 1000).toFixed(2);
+            console.error(`❌ BPM analysis failed after ${totalTime}s:`, err);
+
+            handleError(getErrorMessage(err));
         }
     }
 
@@ -121,21 +176,50 @@ function Hero() {
                 </h2>
                 <p className="mt-6 text-lg text-gray-200">
                     Upload or drag & drop your track – get clean, accurate BPM analysis in seconds.
+                    <br />
+                    <span className="text-sm text-gray-400 mt-2 block">Optimized for electronic music and DJ tracks</span>
                 </p>
 
                 {/* Analyzer Card */}
                 <div className="mt-10 w-full max-w-xl mx-auto bg-gray-900 p-8 rounded-2xl shadow-lg border border-gray-700">
-                    <Dropzone onFile={handleFile} />
+                    <Dropzone onFile={handleFile} onError={handleError} />
+
                     {loading && (
                         <div className="mt-6 space-y-3">
                             <Loader />
                             {uploadStatus && (
-                                <p className="text-sm text-gray-400 text-center">{uploadStatus}</p>
+                                <div className="flex items-center justify-center gap-2">
+                                    <div className="w-2 h-2 bg-brand rounded-full animate-pulse"></div>
+                                    <p className="text-sm text-gray-400 text-center">{uploadStatus}</p>
+                                </div>
                             )}
                         </div>
                     )}
-                    {error && <p className="text-red-400 font-medium mt-4">{error}</p>}
-                    <Result fileName={fileName} bpm={bpm} totalTime={totalProcessingTime} />
+
+                    {error && (
+                        <motion.div
+                            className="mt-6 p-4 bg-red-900/20 border border-red-600/30 rounded-lg"
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -10 }}
+                        >
+                            <div className="flex items-start gap-3">
+                                <XCircle className="w-5 h-5 text-red-400 mt-0.5 flex-shrink-0" />
+                                <div>
+                                    <p className="text-red-400 font-medium text-sm">Upload Failed</p>
+                                    <p className="text-red-300 text-sm mt-1">{error}</p>
+                                    <button
+                                        onClick={clearError}
+                                        className="text-red-400 hover:text-red-300 text-xs mt-2 underline"
+                                    >
+                                        Try again
+                                    </button>
+                                </div>
+                            </div>
+                        </motion.div>
+                    )}
+
+                    <Result fileName={fileName} bpm={Math.round(bpm)} totalTime={totalProcessingTime} />
                 </div>
             </div>
         </motion.header>
