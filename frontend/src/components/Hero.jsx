@@ -1,10 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Dropzone from "./Dropzone";
 import Loader from "./Loader";
 import Result from "./Result";
 import { motion } from "framer-motion";
 import { useBPMDetector } from "../utils/useBPMDetector";
-import { AlertTriangle, CheckCircle, XCircle } from "lucide-react";
+import { AlertTriangle, CheckCircle, XCircle, Clock } from "lucide-react";
 
 function Hero() {
     // State for file analysis results
@@ -15,8 +15,35 @@ function Hero() {
     const [totalProcessingTime, setTotalProcessingTime] = useState(null);
     const [uploadStatus, setUploadStatus] = useState("");
 
+    // Rate limit cooldown state
+    const [cooldownEnd, setCooldownEnd] = useState(null);
+    const [cooldownSeconds, setCooldownSeconds] = useState(0);
+
     // Load BPM detector
     const bpmDetector = useBPMDetector();
+
+    // Cooldown timer effect
+    useEffect(() => {
+        let interval;
+
+        if (cooldownEnd) {
+            interval = setInterval(() => {
+                const now = Date.now();
+                const remaining = Math.max(0, Math.ceil((cooldownEnd - now) / 1000));
+
+                setCooldownSeconds(remaining);
+
+                if (remaining <= 0) {
+                    setCooldownEnd(null);
+                    setCooldownSeconds(0);
+                }
+            }, 1000);
+        }
+
+        return () => {
+            if (interval) clearInterval(interval);
+        };
+    }, [cooldownEnd]);
 
     // Enhanced error handling with user-friendly messages
     function getErrorMessage(error, context = '') {
@@ -40,7 +67,11 @@ function Hero() {
         }
 
         if (errorStr.includes('429') || errorStr.includes('Too Many Requests') || errorStr.includes('rate limit')) {
-            return "Rate limit exceeded. Please wait a moment before uploading another file.";
+            // Calculate cooldown based on your rate limits
+            const now = Date.now();
+            const cooldownTime = 60000; // 60 seconds (60s / 10 requests per minute = 6s per request, using 60s to be safe)
+            setCooldownEnd(now + cooldownTime);
+            return "Rate limit exceeded. Please wait before uploading another file.";
         }
 
         if (errorStr.includes('400') || errorStr.includes('bad request')) {
@@ -79,6 +110,8 @@ function Hero() {
 
     function clearError() {
         setError(null);
+        setCooldownEnd(null);
+        setCooldownSeconds(0);
     }
 
     /**
@@ -87,6 +120,12 @@ function Hero() {
     async function handleFile(file) {
         if (!file) {
             handleError("No file provided. Please select an audio file.");
+            return;
+        }
+
+        // Check if we're in cooldown
+        if (cooldownEnd && Date.now() < cooldownEnd) {
+            handleError(`Please wait ${cooldownSeconds} seconds before uploading another file.`);
             return;
         }
 
@@ -100,10 +139,13 @@ function Hero() {
         setBpm(null);
         setTotalProcessingTime(null);
         setLoading(true);
-        setUploadStatus("Validating file...");
+        setUploadStatus("Validating file format and size...");
         setFileName(file.name);
 
         try {
+            // Brief delay to show validation status
+            await new Promise(resolve => setTimeout(resolve, 200));
+
             setUploadStatus(`Uploading ${(file.size / 1024 / 1024).toFixed(1)}MB file...`);
 
             // Send file to backend API with progress tracking
@@ -156,10 +198,20 @@ function Hero() {
         } catch (err) {
             const endTime = performance.now();
             const totalTime = ((endTime - startTime) / 1000).toFixed(2);
-            console.error(`❌ BPM analysis failed after ${totalTime}s:`, err);
+            console.error(`⚠ BPM analysis failed after ${totalTime}s:`, err);
 
             handleError(getErrorMessage(err));
         }
+    }
+
+    // Format cooldown time display
+    function formatCooldownTime(seconds) {
+        if (seconds >= 60) {
+            const minutes = Math.floor(seconds / 60);
+            const remainingSeconds = seconds % 60;
+            return `${minutes}m ${remainingSeconds}s`;
+        }
+        return `${seconds}s`;
     }
 
     return (
@@ -175,7 +227,7 @@ function Hero() {
                     Detect the <span className="text-accent">BPM</span> of your music instantly
                 </h2>
                 <p className="mt-6 text-lg text-gray-200">
-                    Upload or drag & drop your track – get clean, accurate BPM analysis in seconds.
+                    Upload or drag & drop your track — get clean, accurate BPM analysis in seconds.
                     <br />
                     <span className="text-sm text-gray-400 mt-2 block">Optimized for electronic music and DJ tracks</span>
                 </p>
@@ -196,7 +248,26 @@ function Hero() {
                         </div>
                     )}
 
-                    {error && (
+                    {/* Rate limit cooldown timer */}
+                    {cooldownEnd && cooldownSeconds > 0 && (
+                        <motion.div
+                            className="mt-6 p-4 bg-yellow-900/20 border border-yellow-600/30 rounded-lg"
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                        >
+                            <div className="flex items-center gap-3">
+                                <Clock className="w-5 h-5 text-yellow-400 animate-pulse" />
+                                <div>
+                                    <p className="text-yellow-400 font-medium text-sm">Rate limit active</p>
+                                    <p className="text-yellow-300 text-sm">
+                                        Please wait {formatCooldownTime(cooldownSeconds)} before uploading another file
+                                    </p>
+                                </div>
+                            </div>
+                        </motion.div>
+                    )}
+
+                    {error && !cooldownEnd && (
                         <motion.div
                             className="mt-6 p-4 bg-red-900/20 border border-red-600/30 rounded-lg"
                             initial={{ opacity: 0, y: 10 }}

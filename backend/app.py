@@ -31,7 +31,9 @@ blocked_ips = set()
 MAX_FILE_SIZE = 150 * 1024 * 1024  # 150MB
 MIN_FILE_SIZE = 1024  # 1KB
 MAX_REQUESTS_PER_HOUR = 100
-MAX_REQUESTS_PER_MINUTE = 10  
+MAX_REQUESTS_PER_MINUTE = 2  
+#MAX_REQUESTS_PER_HOUR = 5      # Very low for testing
+#MAX_REQUESTS_PER_MINUTE = 3    # Very low for testing
 MAX_FAILED_ATTEMPTS = 10     
 BLOCK_DURATION = 3600  # 1 hour in seconds
 MAX_MEMORY_USAGE = 80  # Percentage
@@ -78,6 +80,10 @@ def rate_limit_check(ip_address):
     """Check if IP is within rate limits"""
     now = datetime.now()
     hour_ago = now - timedelta(hours=1)
+    
+    print(f"DEBUG: Rate limit check for IP: {ip_address}")
+    print(f"DEBUG: Stored requests for this IP: {len(rate_limit_storage[ip_address])}")
+    print(f"DEBUG: Rate limit storage: {dict(rate_limit_storage)}")
     
     # Clean old entries
     rate_limit_storage[ip_address] = [
@@ -187,24 +193,24 @@ def security_middleware(f):
                     'error': 'Service temporarily overloaded. Please try again in a few minutes.'
                 }), 503
             
-            # Rate limiting check
-            rate_ok, rate_msg = rate_limit_check(client_ip)
-            if not rate_ok:
-                logger.warning(f"Rate limit exceeded for IP {client_ip}: {rate_msg}")
-                return jsonify({'error': rate_msg}), 429
-            
-            # Check User-Agent (basic bot detection)
+            # Check User-Agent BEFORE rate limiting
             user_agent = request.headers.get('User-Agent', '')
             if not user_agent or len(user_agent) < 10:
                 logger.warning(f"Suspicious user agent from IP {client_ip}: {user_agent}")
                 record_request(client_ip, success=False)
                 return jsonify({'error': 'Invalid request headers'}), 400
             
+            # Rate limiting check
+            rate_ok, rate_msg = rate_limit_check(client_ip)
+            if not rate_ok:
+                logger.warning(f"Rate limit exceeded for IP {client_ip}: {rate_msg}")
+                return jsonify({'error': rate_msg}), 429
+            
+            # Record the request immediately after passing rate check
+            record_request(client_ip, success=True)
+            
             # Execute the actual route
             result = f(*args, **kwargs)
-            
-            # Record successful request
-            record_request(client_ip, success=True)
             return result
             
         except Exception as e:

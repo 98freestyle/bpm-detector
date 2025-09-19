@@ -49,3 +49,24 @@ backend/*.pyc
 # Temporary files
 *.tmp
 *.temp
+
+# Test and security reports
+*test_report*.json
+security_test_report_*.json
+rate_limit_test_*.json
+
+# Documentation files (AI context)
+READAI.md
+
+# Backend service logs
+backend/logs/
+*.log.*
+
+# Backup files
+*.bak
+*.backup
+
+# Test files
+test.mp3
+test.wav
+dummy.*
