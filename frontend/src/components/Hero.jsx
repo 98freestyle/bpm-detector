@@ -22,6 +22,19 @@ function Hero() {
     // Load BPM detector
     const bpmDetector = useBPMDetector();
 
+    // Load cooldown from localStorage on component mount
+    useEffect(() => {
+        const savedCooldown = localStorage.getItem('bmp_cooldown_end');
+        if (savedCooldown) {
+            const cooldownTime = parseInt(savedCooldown);
+            if (cooldownTime > Date.now()) {
+                setCooldownEnd(cooldownTime);
+            } else {
+                localStorage.removeItem('bmp_cooldown_end');
+            }
+        }
+    }, []);
+
     // Cooldown timer effect
     useEffect(() => {
         let interval;
@@ -36,6 +49,7 @@ function Hero() {
                 if (remaining <= 0) {
                     setCooldownEnd(null);
                     setCooldownSeconds(0);
+                    localStorage.removeItem('bmp_cooldown_end');
                 }
             }, 1000);
         }
@@ -69,8 +83,10 @@ function Hero() {
         if (errorStr.includes('429') || errorStr.includes('Too Many Requests') || errorStr.includes('rate limit')) {
             // Calculate cooldown based on your rate limits
             const now = Date.now();
-            const cooldownTime = 60000; // 60 seconds (60s / 10 requests per minute = 6s per request, using 60s to be safe)
-            setCooldownEnd(now + cooldownTime);
+            const cooldownTime = 60000; // 60 seconds
+            const cooldownEndTime = now + cooldownTime;
+            setCooldownEnd(cooldownEndTime);
+            localStorage.setItem('bmp_cooldown_end', cooldownEndTime.toString());
             return "Rate limit exceeded. Please wait before uploading another file.";
         }
 
@@ -112,18 +128,19 @@ function Hero() {
         setError(null);
         setCooldownEnd(null);
         setCooldownSeconds(0);
+        localStorage.removeItem('bmp_cooldown_end');
     }
 
     /**
-     * Handles audio file upload + BPM analysis with comprehensive error handling
-     */
+ * Handles audio file upload + BPM analysis with comprehensive error handling
+ */
     async function handleFile(file) {
         if (!file) {
             handleError("No file provided. Please select an audio file.");
             return;
         }
 
-        // Check if we're in cooldown
+        // Check cooldown first
         if (cooldownEnd && Date.now() < cooldownEnd) {
             handleError(`Please wait ${cooldownSeconds} seconds before uploading another file.`);
             return;
@@ -248,23 +265,13 @@ function Hero() {
                         </div>
                     )}
 
-                    {/* Rate limit cooldown timer */}
+                    {/* Simple, bold rate limit blocker */}
                     {cooldownEnd && cooldownSeconds > 0 && (
-                        <motion.div
-                            className="mt-6 p-4 bg-yellow-900/20 border border-yellow-600/30 rounded-lg"
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                        >
-                            <div className="flex items-center gap-3">
-                                <Clock className="w-5 h-5 text-yellow-400 animate-pulse" />
-                                <div>
-                                    <p className="text-yellow-400 font-medium text-sm">Rate limit active</p>
-                                    <p className="text-yellow-300 text-sm">
-                                        Please wait {formatCooldownTime(cooldownSeconds)} before uploading another file
-                                    </p>
-                                </div>
+                        <div className="mt-6 p-4 bg-red-900/20 border border-red-600 rounded-lg text-center">
+                            <div className="text-red-400 text-lg font-semibold">
+                                Rate limited. Try again in {cooldownSeconds}s
                             </div>
-                        </motion.div>
+                        </div>
                     )}
 
                     {error && !cooldownEnd && (
@@ -290,7 +297,7 @@ function Hero() {
                         </motion.div>
                     )}
 
-                    <Result fileName={fileName} bpm={Math.round(bpm)} totalTime={totalProcessingTime} />
+                    <Result fileName={fileName} bpm={bpm} totalTime={totalProcessingTime} hasError={error || (cooldownEnd && cooldownSeconds > 0)} />
                 </div>
             </div>
         </motion.header>
