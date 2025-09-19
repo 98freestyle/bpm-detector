@@ -2,7 +2,7 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import { Upload, FileAudio, AlertCircle } from "lucide-react";
 
-function Dropzone({ onFile, onError }) {
+function Dropzone({ onFile, onError, loading }) {
     const [dragOver, setDragOver] = useState(false);
 
     // Supported audio formats
@@ -19,8 +19,10 @@ function Dropzone({ onFile, onError }) {
     const MAX_FILE_SIZE = 150 * 1024 * 1024; // 150MB
     const MIN_FILE_SIZE = 1024; // 1KB minimum
 
+    /**
+     * Validate uploaded file for type, size, and suspicious extensions
+     */
     async function validateFile(file) {
-        // Check if file exists and has content
         if (!file) {
             return { valid: false, error: "No file selected. Please choose an audio file." };
         }
@@ -29,12 +31,10 @@ function Dropzone({ onFile, onError }) {
             return { valid: false, error: "Empty file detected. Please choose a valid audio file." };
         }
 
-        // Check minimum file size
         if (file.size < MIN_FILE_SIZE) {
-            return { valid: false, error: "File too small. Please upload a valid audio file (minimum 1KB)." };
+            return { valid: false, error: "File too small. Minimum size is 1KB." };
         }
 
-        // Check maximum file size
         if (file.size > MAX_FILE_SIZE) {
             const maxSizeMB = Math.round(MAX_FILE_SIZE / (1024 * 1024));
             const fileSizeMB = Math.round(file.size / (1024 * 1024));
@@ -44,7 +44,6 @@ function Dropzone({ onFile, onError }) {
             };
         }
 
-        // Check file type
         if (!file.type.startsWith("audio/") && !SUPPORTED_FORMATS.includes(file.type)) {
             return {
                 valid: false,
@@ -52,16 +51,14 @@ function Dropzone({ onFile, onError }) {
             };
         }
 
-        // Additional file name validation
         if (!file.name || file.name.trim() === '') {
             return { valid: false, error: "Invalid file name. Please rename your file and try again." };
         }
 
-        // Check for suspicious file extensions
-        const fileName = file.name.toLowerCase();
         const suspiciousExtensions = ['.exe', '.bat', '.scr', '.com', '.pif', '.js', '.vbs', '.jar'];
-        const hasSuspiciousExtension = suspiciousExtensions.some(ext => fileName.endsWith(ext));
-
+        const hasSuspiciousExtension = suspiciousExtensions.some(ext =>
+            file.name.toLowerCase().endsWith(ext)
+        );
         if (hasSuspiciousExtension) {
             return { valid: false, error: "Invalid file type detected. Only audio files are allowed." };
         }
@@ -69,18 +66,27 @@ function Dropzone({ onFile, onError }) {
         return { valid: true };
     }
 
+    /**
+     * Handle a new file after validation
+     * - Prevents processing during active loading
+     * - Trims very large files to 10MB for faster upload/analysis
+     */
     async function handleFile(file) {
+        if (loading) {
+            onError("Please wait for the current analysis to complete.");
+            return;
+        }
+
         if (!file) return;
 
-        // Validate the file
         const validation = await validateFile(file);
         if (!validation.valid) {
             onError(validation.error);
             return;
         }
 
-        // Trim large files to first 10MB for faster upload
-        const maxUploadSize = 10 * 1024 * 1024; // 10MB
+        // Trim large files (10MB cap for upload speed)
+        const maxUploadSize = 10 * 1024 * 1024;
         let fileToUpload = file;
 
         if (file.size > maxUploadSize) {
@@ -93,13 +99,20 @@ function Dropzone({ onFile, onError }) {
             }
         }
 
-        // File is valid, pass it to the parent component
         onFile(fileToUpload);
     }
 
+    /**
+     * Handle drag-and-drop logic
+     */
     function handleDrop(e) {
         e.preventDefault();
         setDragOver(false);
+
+        if (loading) {
+            onError("Please wait for the current analysis to complete.");
+            return;
+        }
 
         const files = e.dataTransfer.files;
         if (files.length === 0) {
@@ -115,26 +128,33 @@ function Dropzone({ onFile, onError }) {
         handleFile(files[0]);
     }
 
+    /**
+     * Handle file selection from system browse dialog
+     */
     function handleBrowse(e) {
-        const files = e.target.files;
-        if (files.length === 0) {
-            return; // User cancelled file selection
+        if (loading) {
+            onError("Please wait for the current analysis to complete.");
+            e.target.value = '';
+            return;
         }
 
-        handleFile(files[0]);
+        const files = e.target.files;
+        if (files.length === 0) return;
 
-        // Reset input to allow same file selection again
-        e.target.value = '';
+        handleFile(files[0]);
+        e.target.value = ''; // Reset input so the same file can be reselected
     }
 
+    /**
+     * Drag-over effects
+     */
     function handleDragOver(e) {
         e.preventDefault();
-        setDragOver(true);
+        if (!loading) setDragOver(true);
     }
 
     function handleDragLeave(e) {
         e.preventDefault();
-        // Only set dragOver to false if we're leaving the dropzone entirely
         if (!e.currentTarget.contains(e.relatedTarget)) {
             setDragOver(false);
         }
@@ -144,49 +164,69 @@ function Dropzone({ onFile, onError }) {
         <div className="space-y-4">
             <motion.label
                 htmlFor="file-upload"
-                className={`relative flex flex-col items-center justify-center p-12 rounded-2xl cursor-pointer transition-all
-                border-2 border-dashed ${dragOver
-                        ? "border-brand bg-brand/10 shadow-lg scale-105"
-                        : "border-gray-600 hover:border-brand hover:bg-gray-900/60"
+                className={`relative flex flex-col items-center justify-center p-12 rounded-2xl transition-all duration-300
+                border-2 border-dashed ${loading
+                        ? "border-gray-700 bg-gray-900/30 cursor-not-allowed opacity-60"
+                        : dragOver
+                            ? "border-brand bg-brand/10 shadow-lg scale-105 cursor-pointer"
+                            : "border-gray-600 hover:border-brand hover:bg-gray-900/60 cursor-pointer"
                     }`}
-                onDragOver={handleDragOver}
-                onDragLeave={handleDragLeave}
-                onDrop={handleDrop}
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
+                onDragOver={loading ? undefined : handleDragOver}
+                onDragLeave={loading ? undefined : handleDragLeave}
+                onDrop={loading ? undefined : handleDrop}
+                whileHover={loading ? {} : { scale: 1.02 }}
+                whileTap={loading ? {} : { scale: 0.98 }}
             >
-                <Upload className="w-10 h-10 text-brand mb-4" />
-                <p className="text-gray-300 text-lg">
-                    <span className="font-semibold text-brand">Click to browse</span> or
-                    drag & drop your audio file here
-                </p>
-                <p className="text-gray-500 text-sm mt-2">
-                    Supports: MP3, WAV, FLAC, AAC, OGG, M4A
-                </p>
-                <p className="text-gray-500 text-xs mt-1">
-                    Maximum file size: 150MB
+                {/* Subtle glow effect when actively dragging */}
+                {dragOver && !loading && (
+                    <div className="absolute inset-0 bg-gradient-to-br from-brand/5 to-transparent rounded-2xl"></div>
+                )}
+
+                {/* Upload icon */}
+                <Upload
+                    className={`w-12 h-12 mb-4 transition-colors duration-300 
+                    ${loading ? 'text-gray-600' : dragOver ? 'text-brand-light' : 'text-brand'}`}
+                />
+
+                {/* Main instruction text */}
+                <p className={`text-lg select-none font-medium ${loading ? 'text-gray-600' : 'text-gray-300'}`}>
+                    {loading ? (
+                        "Processing your file..."
+                    ) : (
+                        <>
+                            <span className="font-semibold text-brand hover:text-brand-light transition-colors">
+                                Click to browse
+                            </span>{" "}
+                            or drag & drop your audio file here
+                        </>
+                    )}
                 </p>
 
+                {/* Helper text + tips (centered inside dropzone) */}
+                {!loading && (
+                    <div className="mt-4 flex flex-col items-center space-y-1 text-center">
+                        <p className="text-gray-500 text-sm select-none font-medium">
+                            Supports: MP3, WAV, FLAC, AAC, OGG, M4A
+                        </p>
+                        <p className="text-gray-500 text-xs select-none">
+                            Maximum file size: 150MB
+                        </p>
+                        <p className="text-gray-500 text-xs select-none">
+                            Files are auto-optimized for faster analysis
+                        </p>
+                    </div>
+                )}
+
+                {/* Hidden input for file selection */}
                 <input
                     id="file-upload"
                     type="file"
                     accept="audio/*,.mp3,.wav,.flac,.aac,.ogg,.m4a"
                     onChange={handleBrowse}
+                    disabled={loading}
                     className="hidden"
                 />
             </motion.label>
-
-            {/* Quick tips */}
-            <div className="text-xs text-gray-500 space-y-1">
-                <div className="flex items-center gap-2">
-                    <FileAudio className="w-3 h-3" />
-                    <span>For best results, use high-quality audio files</span>
-                </div>
-                <div className="flex items-center gap-2">
-                    <AlertCircle className="w-3 h-3" />
-                    <span>Large files are automatically optimized for faster analysis</span>
-                </div>
-            </div>
         </div>
     );
 }

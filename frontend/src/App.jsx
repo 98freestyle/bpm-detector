@@ -1,17 +1,18 @@
-// Root app layout wrapper
+
 import Navbar from "./components/Navbar";
 import Hero from "./components/Hero";
 import Features from "./components/Features";
-import Footer from "./components/Footer";
+import FAQ from "./components/FAQ";
+import Contact from "./components/Contact";
 
 function App() {
   return (
-    // Dark background as default theme
-    <div className="min-h-screen flex flex-col bg-gray-950 text-gray-100">
+    <div className="min-h-screen bg-gray-950 text-gray-100">
       <Navbar />
       <Hero />
       <Features />
-      <Footer />
+      <FAQ />
+      <Contact />
     </div>
   );
 }
