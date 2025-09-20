@@ -14,6 +14,7 @@ from datetime import datetime, timedelta
 import hashlib
 import psutil
 import threading
+from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
 CORS(app)
@@ -80,6 +81,7 @@ def rate_limit_check(ip_address):
     """Check if IP is within rate limits"""
     now = datetime.now()
     hour_ago = now - timedelta(hours=1)
+    minute_ago = now - timedelta(minutes=1)
     
     print(f"DEBUG: Rate limit check for IP: {ip_address}")
     print(f"DEBUG: Stored requests for this IP: {len(rate_limit_storage[ip_address])}")
@@ -95,7 +97,12 @@ def rate_limit_check(ip_address):
     if ip_address in blocked_ips:
         return False, "IP temporarily blocked due to too many failed attempts"
     
-    # Check rate limit
+    # Check per-minute rate limit FIRST
+    recent_requests = [ts for ts in rate_limit_storage[ip_address] if ts > minute_ago]
+    if len(recent_requests) >= MAX_REQUESTS_PER_MINUTE:
+        return False, f"Rate limit exceeded. Maximum {MAX_REQUESTS_PER_MINUTE} requests per minute"
+    
+    # Check hourly rate limit
     if len(rate_limit_storage[ip_address]) >= MAX_REQUESTS_PER_HOUR:
         return False, f"Rate limit exceeded. Maximum {MAX_REQUESTS_PER_HOUR} requests per hour"
     
@@ -126,6 +133,11 @@ def record_request(ip_address, success=True):
 
 def validate_audio_file(file_data, filename):
     """Comprehensive audio file validation"""
+    
+    # Use secure_filename for path traversal protection, but don't require exact match
+    secure_name = secure_filename(filename)
+    if not secure_name:
+        return False, "Invalid filename detected"
     
     # Check file size
     if len(file_data) < MIN_FILE_SIZE:
@@ -206,10 +218,7 @@ def security_middleware(f):
                 logger.warning(f"Rate limit exceeded for IP {client_ip}: {rate_msg}")
                 return jsonify({'error': rate_msg}), 429
             
-            # Record the request immediately after passing rate check
-            record_request(client_ip, success=True)
-            
-            # Execute the actual route
+            # Execute the actual route - DON'T record request here
             result = f(*args, **kwargs)
             return result
             
@@ -251,6 +260,7 @@ def analyze_bpm():
         is_valid, validation_msg = validate_audio_file(file_data, file.filename)
         if not is_valid:
             logger.warning(f"File validation failed: {validation_msg}")
+            record_request(client_ip, success=False)
             return jsonify({'error': validation_msg}), 400
         
         validation_time = time.time()
@@ -270,6 +280,7 @@ def analyze_bpm():
             audio = loader()
         except Exception as e:
             logger.error(f"Failed to load audio file: {str(e)}")
+            record_request(client_ip, success=False)
             return jsonify({'error': 'Audio file is corrupted or in an unsupported format'}), 400
         
         load_time = time.time()
@@ -277,9 +288,11 @@ def analyze_bpm():
         
         # Validate audio content
         if len(audio) == 0:
+            record_request(client_ip, success=False)
             return jsonify({'error': 'Audio file contains no audio data'}), 400
         
         if len(audio) < 44100:  # Less than 1 second
+            record_request(client_ip, success=False)
             return jsonify({'error': 'Audio file too short for BPM analysis (minimum 1 second)'}), 400
         
         # Trim to first 60 seconds for analysis (optimization)
@@ -297,6 +310,7 @@ def analyze_bpm():
             bpm, beats, beats_confidence, _, beats_intervals = rhythm_extractor(audio)
         except Exception as e:
             logger.error(f"BPM analysis failed: {str(e)}")
+            record_request(client_ip, success=False)
             return jsonify({'error': 'BPM analysis failed. Audio may have irregular rhythm or be too quiet'}), 500
         
         analysis_time = time.time()
@@ -305,6 +319,7 @@ def analyze_bpm():
         # Validate BPM result
         if not bpm or bpm <= 0 or bpm > 300:  # Reasonable BPM range
             logger.warning(f"Invalid BPM detected: {bpm}")
+            record_request(client_ip, success=False)
             return jsonify({'error': 'Could not detect valid BPM. Audio may have irregular rhythm or be too quiet'}), 422
         
         # Round BPM to 1 decimal place
@@ -312,6 +327,9 @@ def analyze_bpm():
         
         total_time = time.time() - start_time
         logger.info(f"Analysis complete: {bpm_result} BPM in {total_time:.2f}s for IP {client_ip}")
+        
+        # Record successful request ONLY at the end
+        record_request(client_ip, success=True)
         
         return jsonify({
             'bpm': bpm_result,
@@ -324,6 +342,7 @@ def analyze_bpm():
     except Exception as e:
         total_time = time.time() - start_time
         logger.error(f"Unexpected error during BPM analysis after {total_time:.2f}s: {str(e)}")
+        record_request(client_ip, success=False)
         return jsonify({'error': 'Internal server error during audio processing'}), 500
         
     finally:
@@ -343,7 +362,7 @@ def health_check():
         
         status = {
             'status': 'healthy',
-            'service': 'bmp-analyzer',
+            'service': 'bpm-analyzer',
             'memory_usage': f"{memory_usage}%",
             'cpu_usage': f"{cpu_usage}%",
             'active_requests': len([ip for ip, requests in rate_limit_storage.items() if requests]),
