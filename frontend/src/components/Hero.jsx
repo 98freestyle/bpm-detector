@@ -24,13 +24,13 @@ function Hero() {
 
     // Load cooldown from localStorage on component mount
     useEffect(() => {
-        const savedCooldown = localStorage.getItem('bmp_cooldown_end');
+        const savedCooldown = localStorage.getItem('bpm_cooldown_end');
         if (savedCooldown) {
             const cooldownTime = parseInt(savedCooldown);
             if (cooldownTime > Date.now()) {
                 setCooldownEnd(cooldownTime);
             } else {
-                localStorage.removeItem('bmp_cooldown_end');
+                localStorage.removeItem('bpm_cooldown_end');
             }
         }
     }, []);
@@ -49,7 +49,7 @@ function Hero() {
                 if (remaining <= 0) {
                     setCooldownEnd(null);
                     setCooldownSeconds(0);
-                    localStorage.removeItem('bmp_cooldown_end');
+                    localStorage.removeItem('bpm_cooldown_end');
                 }
             }, 1000);
         }
@@ -86,7 +86,7 @@ function Hero() {
             const cooldownTime = 60000; // 60 seconds
             const cooldownEndTime = now + cooldownTime;
             setCooldownEnd(cooldownEndTime);
-            localStorage.setItem('bmp_cooldown_end', cooldownEndTime.toString());
+            localStorage.setItem('bpm_cooldown_end', cooldownEndTime.toString());
             return "Rate limit exceeded. Please wait before uploading another file.";
         }
 
@@ -128,18 +128,12 @@ function Hero() {
         setError(null);
         setCooldownEnd(null);
         setCooldownSeconds(0);
-        localStorage.removeItem('bmp_cooldown_end');
+        localStorage.removeItem('bpm_cooldown_end');
     }
 
     async function handleFile(file) {
         if (!file) {
             handleError("No file provided. Please select an audio file.");
-            return;
-        }
-
-        // Check cooldown first
-        if (cooldownEnd && Date.now() < cooldownEnd) {
-            handleError(`Please wait ${cooldownSeconds} seconds before uploading another file.`);
             return;
         }
 
@@ -302,23 +296,26 @@ function Hero() {
                         </motion.div>
                     )}
 
+                    {/* Only show error if not in cooldown */}
                     {error && !cooldownEnd && (
                         <motion.div
-                            className="mt-6 p-4 bg-red-900/20 border border-red-600/30 rounded-xl"
+                            className="mt-6 flex justify-center"
                             initial={{ opacity: 0, y: 10 }}
                             animate={{ opacity: 1, y: 0 }}
                         >
-                            <div className="flex items-start gap-3">
-                                <XCircle className="w-5 h-5 text-red-400 mt-0.5 flex-shrink-0" />
-                                <div>
-                                    <p className="text-red-400 font-bold text-sm select-none">Upload Failed</p>
-                                    <p className="text-red-300 text-sm mt-1 select-none">{error}</p>
-                                    <button
-                                        onClick={clearError}
-                                        className="text-red-400 hover:text-red-300 text-xs mt-2 underline font-medium"
-                                    >
-                                        Try again
-                                    </button>
+                            <div className="max-w-md p-4 bg-red-900/20 border border-red-600/30 rounded-xl text-center">
+                                <div className="flex items-center justify-center gap-3">
+                                    <XCircle className="w-5 h-5 text-red-400 flex-shrink-0" />
+                                    <div className="text-center">
+                                        <p className="text-red-400 font-bold text-sm select-none">Upload Failed</p>
+                                        <p className="text-red-300 text-sm mt-1 select-none">{error}</p>
+                                        <button
+                                            onClick={clearError}
+                                            className="text-red-400 hover:text-red-300 text-xs mt-2 underline font-medium"
+                                        >
+                                            Try again
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         </motion.div>

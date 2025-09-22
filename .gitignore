@@ -56,7 +56,7 @@ security_test_report_*.json
 rate_limit_test_*.json
 
 # Documentation files (AI context)
-READAI.md
+
 
 # Backend service logs
 backend/logs/
