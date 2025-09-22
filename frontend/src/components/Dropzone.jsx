@@ -2,7 +2,7 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import { Upload, FileAudio, AlertCircle } from "lucide-react";
 
-function Dropzone({ onFile, onError, loading }) {
+function Dropzone({ onFile, onError, loading, rateLimited }) {
     const [dragOver, setDragOver] = useState(false);
 
     // Supported audio formats
@@ -18,6 +18,9 @@ function Dropzone({ onFile, onError, loading }) {
 
     const MAX_FILE_SIZE = 150 * 1024 * 1024; // 150MB
     const MIN_FILE_SIZE = 1024; // 1KB minimum
+
+    // Check if dropzone should be disabled
+    const isDisabled = loading || rateLimited;
 
     /**
      * Validate uploaded file for type, size, and suspicious extensions
@@ -68,12 +71,14 @@ function Dropzone({ onFile, onError, loading }) {
 
     /**
      * Handle a new file after validation
-     * - Prevents processing during active loading
-     * - Trims very large files to 10MB for faster upload/analysis
      */
     async function handleFile(file) {
-        if (loading) {
-            onError("Please wait for the current analysis to complete.");
+        if (isDisabled) {
+            if (rateLimited) {
+                onError("Rate limited. Please wait before uploading another file.");
+            } else {
+                onError("Please wait for the current analysis to complete.");
+            }
             return;
         }
 
@@ -109,10 +114,7 @@ function Dropzone({ onFile, onError, loading }) {
         e.preventDefault();
         setDragOver(false);
 
-        if (loading) {
-            onError("Please wait for the current analysis to complete.");
-            return;
-        }
+        if (isDisabled) return;
 
         const files = e.dataTransfer.files;
         if (files.length === 0) {
@@ -132,8 +134,7 @@ function Dropzone({ onFile, onError, loading }) {
      * Handle file selection from system browse dialog
      */
     function handleBrowse(e) {
-        if (loading) {
-            onError("Please wait for the current analysis to complete.");
+        if (isDisabled) {
             e.target.value = '';
             return;
         }
@@ -150,7 +151,7 @@ function Dropzone({ onFile, onError, loading }) {
      */
     function handleDragOver(e) {
         e.preventDefault();
-        if (!loading) setDragOver(true);
+        if (!isDisabled) setDragOver(true);
     }
 
     function handleDragLeave(e) {
@@ -160,50 +161,59 @@ function Dropzone({ onFile, onError, loading }) {
         }
     }
 
+    // Get display text based on state
+    function getDisplayText() {
+        if (rateLimited) {
+            return "Rate limited. Please wait before uploading.";
+        }
+        if (loading) {
+            return "Processing your file...";
+        }
+        return (
+            <>
+                <span className="font-semibold text-brand hover:text-brand-light transition-colors">
+                    Click to browse
+                </span>{" "}
+                or drag & drop your audio file here
+            </>
+        );
+    }
+
     return (
         <div className="space-y-4">
             <motion.label
                 htmlFor="file-upload"
                 className={`relative flex flex-col items-center justify-center p-12 rounded-2xl transition-all duration-300
-                border-2 border-dashed ${loading
+                border-2 border-dashed ${isDisabled
                         ? "border-gray-700 bg-gray-900/30 cursor-not-allowed opacity-60"
                         : dragOver
                             ? "border-brand bg-brand/10 shadow-lg scale-105 cursor-pointer"
                             : "border-gray-600 hover:border-brand hover:bg-gray-900/60 cursor-pointer"
                     }`}
-                onDragOver={loading ? undefined : handleDragOver}
-                onDragLeave={loading ? undefined : handleDragLeave}
-                onDrop={loading ? undefined : handleDrop}
-                whileHover={loading ? {} : { scale: 1.02 }}
-                whileTap={loading ? {} : { scale: 0.98 }}
+                onDragOver={isDisabled ? undefined : handleDragOver}
+                onDragLeave={isDisabled ? undefined : handleDragLeave}
+                onDrop={isDisabled ? undefined : handleDrop}
+                whileHover={isDisabled ? {} : { scale: 1.02 }}
+                whileTap={isDisabled ? {} : { scale: 0.98 }}
             >
                 {/* Subtle glow effect when actively dragging */}
-                {dragOver && !loading && (
+                {dragOver && !isDisabled && (
                     <div className="absolute inset-0 bg-gradient-to-br from-brand/5 to-transparent rounded-2xl"></div>
                 )}
 
                 {/* Upload icon */}
                 <Upload
                     className={`w-12 h-12 mb-4 transition-colors duration-300 
-                    ${loading ? 'text-gray-600' : dragOver ? 'text-brand-light' : 'text-brand'}`}
+                    ${isDisabled ? 'text-gray-600' : dragOver ? 'text-brand-light' : 'text-brand'}`}
                 />
 
                 {/* Main instruction text */}
-                <p className={`text-lg select-none font-medium ${loading ? 'text-gray-600' : 'text-gray-300'}`}>
-                    {loading ? (
-                        "Processing your file..."
-                    ) : (
-                        <>
-                            <span className="font-semibold text-brand hover:text-brand-light transition-colors">
-                                Click to browse
-                            </span>{" "}
-                            or drag & drop your audio file here
-                        </>
-                    )}
+                <p className={`text-lg select-none font-medium text-center ${isDisabled ? 'text-gray-600' : 'text-gray-300'}`}>
+                    {getDisplayText()}
                 </p>
 
                 {/* Helper text + tips (centered inside dropzone) */}
-                {!loading && (
+                {!isDisabled && (
                     <div className="mt-4 flex flex-col items-center space-y-1 text-center">
                         <p className="text-gray-500 text-sm select-none font-medium">
                             Supports: MP3, WAV, FLAC, AAC, OGG, M4A
@@ -223,7 +233,7 @@ function Dropzone({ onFile, onError, loading }) {
                     type="file"
                     accept="audio/*,.mp3,.wav,.flac,.aac,.ogg,.m4a"
                     onChange={handleBrowse}
-                    disabled={loading}
+                    disabled={isDisabled}
                     className="hidden"
                 />
             </motion.label>
