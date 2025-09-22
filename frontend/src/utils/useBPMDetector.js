@@ -31,9 +31,9 @@ function checkRateLimit() {
 
 function recordRequest() {
     const now = Date.now();
-    const storedRequests = JSON.parse(localStorage.getItem('bmp_requests') || '[]');
+    const storedRequests = JSON.parse(localStorage.getItem('bpm_requests') || '[]');
     storedRequests.push(now);
-    localStorage.setItem('bmp_requests', JSON.stringify(storedRequests));
+    localStorage.setItem('bpm_requests', JSON.stringify(storedRequests));
 }
 
 export function useBPMDetector() {
