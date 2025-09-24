@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 # Configuration
 MAX_FILE_SIZE = 150 * 1024 * 1024  # 150MB
 MIN_FILE_SIZE = 1024  # 1KB
-MAX_PER_MINUTE = 2
+MAX_PER_MINUTE = 10
 MAX_PER_HOUR = 100
 MAX_MEMORY_USAGE = 80  # Percentage
 MAX_CPU_USAGE = 90   # Percentage
@@ -227,6 +227,14 @@ def analyze_bpm():
             return jsonify({'error': 'Could not detect valid BPM. Audio may have irregular rhythm or be too quiet'}), 422
         
         bpm_result = round(float(bpm), 1)
+        
+        # Key Detection
+        try:
+            key_extractor = es.KeyExtractor()
+            key, scale, strength = key_extractor(audio)
+            logger.info(f"Key detected: {key} {scale} (confidence: {strength:.2f})")
+        except Exception as e:
+            logger.error(f"Key detection failed: {str(e)}")
         
         total_time = time.time() - start_time
         logger.info(f"Analysis complete: {bpm_result} BPM in {total_time:.2f}s for IP {client_ip}")
