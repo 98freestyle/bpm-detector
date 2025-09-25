@@ -18,7 +18,20 @@ function Hero() {
 
     const bpmDetector = useBPMDetector();
 
-    // Check for stored rate limit on page load
+    const ERROR_MESSAGES = {
+        'TOO_SHORT': 'Audio file too short for BPM analysis. Minimum duration is 4 seconds.',
+        'INVALID_FILE': 'Invalid file format. Please upload a valid audio file.',
+        'FILE_TOO_LARGE': 'File too large. Please try a smaller file (under 150MB).',
+        'CORRUPT_FILE': 'Audio file appears corrupted. Please try a different file.',
+        'RATE_LIMITED': 'Rate limit exceeded. Please wait before trying again.',
+        'SERVICE_OVERLOADED': 'Service temporarily overloaded. Please try again in a few minutes.',
+        'ANALYSIS_FAILED': 'BPM detection failed. Audio may have irregular rhythm or be too quiet.',
+        'INVALID_BPM': 'Could not detect valid BPM. Audio may have irregular rhythm.',
+        'SERVER_ERROR': 'Server error. Please try again in a moment.',
+        'NETWORK_ERROR': 'Network connection failed. Please check your internet connection.',
+        'TIMEOUT': 'Upload timed out. Please try a smaller file or check your connection.'
+    };
+
     useEffect(() => {
         const storedRateLimit = localStorage.getItem('rate_limit_end');
         if (storedRateLimit) {
@@ -35,7 +48,6 @@ function Hero() {
         }
     }, []);
 
-    // Rate limit countdown effect
     useEffect(() => {
         let interval;
 
@@ -58,26 +70,27 @@ function Hero() {
         };
     }, [isRateLimited, rateLimitCountdown]);
 
-    function getErrorMessage(error, context = '') {
+    function getErrorMessage(error) {
         const errorStr = error?.toString?.() || error || 'Unknown error';
 
-        if (errorStr.includes('fetch') || errorStr.includes('network') || errorStr.includes('ERR_NETWORK')) {
-            return "Network connection failed. Please check your internet connection and try again.";
+        // Check for specific backend error codes first
+        for (const [code, message] of Object.entries(ERROR_MESSAGES)) {
+            if (errorStr.includes(code) || errorStr.includes(message.toLowerCase())) {
+                return message;
+            }
         }
 
-        if (errorStr.includes('timeout') || errorStr.includes('TIMEOUT')) {
-            return "Upload timed out. Your file may be too large or connection too slow. Try a smaller file or check your internet.";
+        // Network-specific errors
+        if (errorStr.includes('Network error') || errorStr.includes('network')) {
+            return ERROR_MESSAGES.NETWORK_ERROR;
         }
 
-        if (errorStr.includes('413') || errorStr.includes('too large')) {
-            return "File too large for server processing. Please try a smaller file (under 150MB).";
+        if (errorStr.includes('timeout') || errorStr.includes('timed out')) {
+            return ERROR_MESSAGES.TIMEOUT;
         }
 
-        if (errorStr.includes('415') || errorStr.includes('unsupported')) {
-            return "Unsupported file format. Please use MP3, WAV, FLAC, AAC, OGG, or M4A files.";
-        }
-
-        if (errorStr.includes('429') || errorStr.includes('Too Many Requests') || errorStr.includes('rate limit')) {
+        // Rate limiting
+        if (errorStr.includes('rate limit') || errorStr.includes('Too many requests')) {
             const endTime = Date.now() + 60000;
             localStorage.setItem('rate_limit_end', endTime.toString());
             setIsRateLimited(true);
@@ -85,31 +98,19 @@ function Hero() {
             return null;
         }
 
-        if (errorStr.includes('400') || errorStr.includes('bad request')) {
-            return "Invalid file format. Please ensure you're uploading a valid audio file.";
+        // Return the actual error message from backend if it's user-friendly
+        if (errorStr.length < 100 && !errorStr.includes('Backend analysis failed')) {
+            return errorStr;
         }
 
-        if (errorStr.includes('500') || errorStr.includes('server error')) {
-            return "Server processing error. Our system may be temporarily overloaded. Please try again in a moment.";
-        }
-
-        if (errorStr.includes('503') || errorStr.includes('unavailable')) {
-            return "Service temporarily unavailable. Please try again in a few minutes.";
-        }
-
-        if (errorStr.includes('decode') || errorStr.includes('corrupt')) {
-            return "Audio file appears corrupted or damaged. Please try a different file or re-export your audio.";
-        }
-
-        if (errorStr.includes('analysis') || errorStr.includes('BPM')) {
-            return "BPM detection failed. Your audio may be too quiet, have an irregular rhythm, or be an unsupported format.";
-        }
-
-        return `Upload failed: ${context || 'Please try again with a different file or check your connection.'}`;
+        return 'Upload failed. Please try again with a different file.';
     }
 
     function handleError(errorMessage) {
-        setError(errorMessage);
+        const displayError = getErrorMessage(errorMessage);
+        if (displayError) {
+            setError(displayError);
+        }
         setLoading(false);
         setUploadStatus("");
         setBpm(null);
@@ -158,22 +159,15 @@ function Hero() {
                 }
             });
 
-            const uploadEndTime = performance.now();
-            const uploadTime = ((uploadEndTime - uploadStartTime) / 1000).toFixed(2);
             setUploadStatus("");
 
             if (!result) {
-                handleError("No response from server. Please try again or check your connection.");
-                return;
-            }
-
-            if (result.error) {
-                handleError(getErrorMessage(result.error, result.error));
+                handleError("No response from server. Please try again.");
                 return;
             }
 
             if (!result.bpm || result.bpm <= 0) {
-                handleError("BPM detection failed. Your audio may have an irregular rhythm, be too quiet, or contain no clear beat pattern.");
+                handleError("BPM detection failed. Audio may have irregular rhythm or be too quiet.");
                 return;
             }
 
@@ -187,7 +181,7 @@ function Hero() {
                 file.name.substring(0, 30) + '...' :
                 file.name;
 
-            console.log(`🎵 ${result.bpm} BPM detected | ${displayName} (${(file.size / 1024 / 1024).toFixed(1)}MB) | ${totalTime}s total (${result.processing_time || 'N/A'}s processing)`);
+            console.log(`🎵 ${result.bpm} BPM detected | ${displayName} (${(file.size / 1024 / 1024).toFixed(1)}MB) | ${totalTime}s total`);
             setLoading(false);
 
         } catch (err) {
@@ -195,7 +189,7 @@ function Hero() {
             const totalTime = ((endTime - startTime) / 1000).toFixed(2);
             console.error(`⚠ BPM analysis failed after ${totalTime}s:`, err);
 
-            handleError(getErrorMessage(err));
+            handleError(err.message || err);
         }
     }
 
@@ -305,19 +299,23 @@ function Hero() {
                             initial={{ opacity: 0, y: 10 }}
                             animate={{ opacity: 1, y: 0 }}
                         >
-                            <div className="max-w-md p-4 bg-red-900/20 border border-red-600/30 rounded-xl text-center">
-                                <div className="flex items-center justify-center gap-3">
-                                    <XCircle className="w-5 h-5 text-red-400 flex-shrink-0" />
-                                    <div className="text-center">
-                                        <p className="text-red-400 font-bold text-sm select-none">Upload Failed</p>
-                                        <p className="text-red-300 text-sm mt-1 select-none">{error}</p>
-                                        <button
-                                            onClick={clearError}
-                                            className="text-red-400 hover:text-red-300 text-xs mt-2 underline font-medium"
-                                        >
-                                            Try again
-                                        </button>
+                            <div className="w-full max-w-sm p-6 bg-gradient-to-br from-red-900/20 to-red-800/10 border border-red-600/30 rounded-2xl backdrop-blur-sm">
+                                <div className="flex flex-col items-center text-center space-y-3">
+                                    <div className="w-10 h-10 rounded-full bg-red-500/20 flex items-center justify-center">
+                                        <XCircle className="w-5 h-5 text-red-400" />
                                     </div>
+                                    <div>
+                                        <h3 className="text-red-400 font-bold text-sm select-none">Upload Failed</h3>
+                                        <p className="text-red-300 text-sm mt-2 select-none leading-relaxed max-w-xs mx-auto">
+                                            {error}
+                                        </p>
+                                    </div>
+                                    <button
+                                        onClick={clearError}
+                                        className="px-4 py-2 text-xs font-medium text-red-400 hover:text-red-300 hover:bg-red-500/10 border border-red-600/30 rounded-lg transition-colors"
+                                    >
+                                        Try Again
+                                    </button>
                                 </div>
                             </div>
                         </motion.div>

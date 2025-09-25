@@ -21,6 +21,7 @@ logger = logging.getLogger(__name__)
 # Configuration
 MAX_FILE_SIZE = 150 * 1024 * 1024  # 150MB
 MIN_FILE_SIZE = 1024  # 1KB
+MIN_AUDIO_DURATION = 176400  # 4 seconds at 44.1kHz
 MAX_PER_MINUTE = 10
 MAX_PER_HOUR = 100
 MAX_MEMORY_USAGE = 80  # Percentage
@@ -46,6 +47,10 @@ AUDIO_SIGNATURES = {
     b'\x00\x00\x00 ftypM4A': 'audio/mp4',  # M4A
     b'ID3': 'audio/mpeg',       # MP3 with ID3
 }
+
+def error_response(code, message, status=400):
+    """Standardized error response"""
+    return jsonify({'error_code': code, 'error': message}), status
 
 def get_client_ip():
     if request.headers.get('X-Forwarded-For'):
@@ -107,10 +112,10 @@ def check_system_resources():
 def validate_audio_file(file_data, filename):
     secure_name = secure_filename(filename)
     if not secure_name:
-        return False, "Invalid filename detected"
+        return False, "Invalid filename"
     
     if len(file_data) < MIN_FILE_SIZE:
-        return False, "File too small to be a valid audio file"
+        return False, "File too small to be valid audio"
     
     if len(file_data) > MAX_FILE_SIZE:
         return False, f"File too large. Maximum size is {MAX_FILE_SIZE // (1024*1024)}MB"
@@ -164,22 +169,20 @@ def analyze_bpm():
         rate_ok, rate_msg = rate_limit_check(client_ip)
         if not rate_ok:
             logger.warning(f"Rate limit exceeded for IP {client_ip}: {rate_msg}")
-            return jsonify({'error': rate_msg}), 429
+            return error_response('RATE_LIMITED', rate_msg, 429)
         
         # System resource check
         resource_ok, resource_msg = check_system_resources()
         if not resource_ok:
             logger.warning(f"Resource limit hit: {resource_msg}")
-            return jsonify({
-                'error': 'Service temporarily overloaded. Please try again in a few minutes.'
-            }), 503
+            return error_response('SERVICE_OVERLOADED', 'Service temporarily overloaded. Please try again in a few minutes.', 503)
         
         if 'audio' not in request.files:
-            return jsonify({'error': 'No audio file provided in request'}), 400
+            return error_response('NO_FILE', 'No audio file provided')
         
         file = request.files['audio']
         if not file or not file.filename:
-            return jsonify({'error': 'Empty file or missing filename'}), 400
+            return error_response('EMPTY_FILE', 'Empty file or missing filename')
         
         file.seek(0)
         file_data = file.read()
@@ -191,7 +194,7 @@ def analyze_bpm():
         is_valid, validation_msg = validate_audio_file(file_data, file.filename)
         if not is_valid:
             logger.warning(f"File validation failed: {validation_msg}")
-            return jsonify({'error': validation_msg}), 400
+            return error_response('INVALID_FILE', validation_msg)
         
         with tempfile.NamedTemporaryFile(delete=False, suffix='.wav') as tmp:
             temp_path = tmp.name
@@ -202,13 +205,13 @@ def analyze_bpm():
             audio = loader()
         except Exception as e:
             logger.error(f"Failed to load audio file: {str(e)}")
-            return jsonify({'error': 'Audio file is corrupted or in an unsupported format'}), 400
+            return error_response('CORRUPT_FILE', 'Audio file is corrupted or unsupported')
         
         if len(audio) == 0:
-            return jsonify({'error': 'Audio file contains no audio data'}), 400
+            return error_response('EMPTY_AUDIO', 'Audio file contains no audio data')
         
-        if len(audio) < 44100:
-            return jsonify({'error': 'Audio file too short for BPM analysis (minimum 1 second)'}), 400
+        if len(audio) < MIN_AUDIO_DURATION:
+            return error_response('TOO_SHORT', 'Audio file too short for BPM analysis (minimum 4 seconds)')
         
         max_samples = 60 * 44100
         if len(audio) > max_samples:
@@ -220,11 +223,11 @@ def analyze_bpm():
             bpm, beats, beats_confidence, _, beats_intervals = rhythm_extractor(audio)
         except Exception as e:
             logger.error(f"BPM analysis failed: {str(e)}")
-            return jsonify({'error': 'BPM analysis failed. Audio may have irregular rhythm or be too quiet'}), 500
+            return error_response('ANALYSIS_FAILED', 'BPM analysis failed. Audio may have irregular rhythm or be too quiet', 500)
         
         if not bpm or bpm <= 0 or bpm > 300:
             logger.warning(f"Invalid BPM detected: {bpm}")
-            return jsonify({'error': 'Could not detect valid BPM. Audio may have irregular rhythm or be too quiet'}), 422
+            return error_response('INVALID_BPM', 'Could not detect valid BPM. Audio may have irregular rhythm or be too quiet', 422)
         
         bpm_result = round(float(bpm), 1)
         
@@ -250,7 +253,7 @@ def analyze_bpm():
     except Exception as e:
         total_time = time.time() - start_time
         logger.error(f"Unexpected error during BPM analysis after {total_time:.2f}s: {str(e)}")
-        return jsonify({'error': 'Internal server error during audio processing'}), 500
+        return error_response('SERVER_ERROR', 'Internal server error during audio processing', 500)
         
     finally:
         if temp_path and os.path.exists(temp_path):
@@ -265,7 +268,6 @@ def health_check():
         memory_usage = psutil.virtual_memory().percent
         cpu_usage = psutil.cpu_percent(interval=0.1)
         
-        # Check Redis connection
         redis_status = "healthy"
         if redis_client:
             try:
@@ -297,16 +299,12 @@ def health_check():
 
 @app.errorhandler(413)
 def request_entity_too_large(error):
-    return jsonify({
-        'error': f'File too large. Maximum allowed size is {MAX_FILE_SIZE // (1024*1024)}MB.'
-    }), 413
+    return error_response('FILE_TOO_LARGE', f'File too large. Maximum allowed size is {MAX_FILE_SIZE // (1024*1024)}MB.', 413)
 
 @app.errorhandler(429)
 def ratelimit_handler(error):
-    return jsonify({
-        'error': 'Too many requests. Please wait before trying again.'
-    }), 429
+    return error_response('RATE_LIMITED', 'Too many requests. Please wait before trying again.', 429)
 
 if __name__ == '__main__':
-    logger.info("Starting BPM Analyzer backend with Redis rate limiting")
+    logger.info("Starting BPM Analyzer backend")
     app.run(debug=True, host='0.0.0.0', port=8001)
