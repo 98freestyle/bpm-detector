@@ -15,8 +15,8 @@ function Hero() {
     const [uploadStatus, setUploadStatus] = useState("");
     const [isRateLimited, setIsRateLimited] = useState(false);
     const [rateLimitCountdown, setRateLimitCountdown] = useState(0);
-
     const bpmDetector = useBPMDetector();
+    const [keyData, setKeyData] = useState(null);
 
     const ERROR_MESSAGES = {
         'TOO_SHORT': 'Audio file too short for BPM analysis. Minimum duration is 4 seconds.',
@@ -114,6 +114,7 @@ function Hero() {
         setLoading(false);
         setUploadStatus("");
         setBpm(null);
+        setKeyData(null);
         setTotalProcessingTime(null);
         console.error("BPM Analysis Error:", errorMessage);
     }
@@ -172,6 +173,13 @@ function Hero() {
             }
 
             setBpm(result.bpm);
+
+            if (result.key) {
+                setKeyData({
+                    key: result.key,
+                    key_confidence: result.key_confidence
+                });
+            }
 
             const endTime = performance.now();
             const totalTime = ((endTime - startTime) / 1000).toFixed(2);
@@ -321,7 +329,7 @@ function Hero() {
                         </motion.div>
                     )}
 
-                    <Result fileName={fileName} bpm={bpm} totalTime={totalProcessingTime} hasError={error || isRateLimited} />
+                    <Result fileName={fileName} bpm={bpm} totalTime={totalProcessingTime} hasError={error || isRateLimited} keyData={keyData} />
                 </motion.div>
 
                 <div className="mt-20 flex justify-center">
