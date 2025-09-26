@@ -1,0 +1,258 @@
+/* Background animations - completely independent of React */
+
+@keyframes circle1 {
+    0% {
+        transform: translate(0px, 0px) scale(1) rotate(0deg);
+    }
+
+    25% {
+        transform: translate(200px, -150px) scale(1.8) rotate(180deg);
+    }
+
+    50% {
+        transform: translate(-100px, 100px) scale(0.6) rotate(360deg);
+    }
+
+    75% {
+        transform: translate(150px, -50px) scale(1.4) rotate(540deg);
+    }
+
+    100% {
+        transform: translate(0px, 0px) scale(1) rotate(720deg);
+    }
+}
+
+@keyframes circle2 {
+    0% {
+        transform: translate(0px, 0px) scale(1) rotate(720deg);
+    }
+
+    25% {
+        transform: translate(-180px, 120px) scale(0.4) rotate(360deg);
+    }
+
+    50% {
+        transform: translate(120px, -80px) scale(2.1) rotate(0deg);
+    }
+
+    75% {
+        transform: translate(-80px, 160px) scale(0.8) rotate(180deg);
+    }
+
+    100% {
+        transform: translate(0px, 0px) scale(1) rotate(720deg);
+    }
+}
+
+@keyframes particles {
+    0% {
+        transform: translate(0px, 0px) scale(0);
+        opacity: 0;
+    }
+
+    25% {
+        transform: translate(60px, -100px) scale(2);
+        opacity: 1;
+    }
+
+    50% {
+        transform: translate(-40px, 50px) scale(0.5);
+        opacity: 0.3;
+    }
+
+    75% {
+        transform: translate(80px, -150px) scale(3);
+        opacity: 1;
+    }
+
+    100% {
+        transform: translate(0px, 0px) scale(0);
+        opacity: 0;
+    }
+}
+
+@keyframes musicNotes {
+    0% {
+        transform: translate(0px, 0px) scale(0.5) rotate(0deg);
+    }
+
+    25% {
+        transform: translate(50px, -80px) scale(2) rotate(360deg);
+    }
+
+    50% {
+        transform: translate(-30px, 40px) scale(0.8) rotate(180deg);
+    }
+
+    75% {
+        transform: translate(70px, -60px) scale(1.5) rotate(540deg);
+    }
+
+    100% {
+        transform: translate(0px, 0px) scale(0.5) rotate(0deg);
+    }
+}
+
+@keyframes scanningLight {
+    0% {
+        transform: translateX(-100%);
+    }
+
+    100% {
+        transform: translateX(100%);
+    }
+}
+
+@keyframes gridPulse {
+
+    0%,
+    100% {
+        opacity: 0.03;
+    }
+
+    50% {
+        opacity: 0.08;
+    }
+}
+
+.bg-circle-1 {
+    position: absolute;
+    top: 5rem;
+    left: 2.5rem;
+    width: 24rem;
+    height: 24rem;
+    border-radius: 50%;
+    filter: blur(3rem);
+    background: radial-gradient(circle, rgba(99, 102, 241, 0.3) 0%, rgba(99, 102, 241, 0.1) 50%, transparent 100%);
+    box-shadow: 0 0 100px rgba(99, 102, 241, 0.4), 0 0 200px rgba(99, 102, 241, 0.2);
+    animation: circle1 20s infinite ease-in-out;
+}
+
+.bg-circle-2 {
+    position: absolute;
+    bottom: 5rem;
+    right: 2.5rem;
+    width: 20rem;
+    height: 20rem;
+    border-radius: 50%;
+    filter: blur(3rem);
+    background: radial-gradient(circle, rgba(168, 85, 247, 0.4) 0%, rgba(168, 85, 247, 0.15) 50%, transparent 100%);
+    box-shadow: 0 0 120px rgba(168, 85, 247, 0.5), 0 0 240px rgba(168, 85, 247, 0.3);
+    animation: circle2 25s infinite ease-in-out 3s;
+}
+
+.bg-particle {
+    position: absolute;
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: 50%;
+    box-shadow: 0 0 20px currentColor;
+}
+
+.bg-particle-1 {
+    top: 20%;
+    left: 10%;
+    color: rgba(99, 102, 241, 0.8);
+    animation: particles 15s infinite ease-in-out 0s;
+}
+
+.bg-particle-2 {
+    top: 30%;
+    left: 20%;
+    color: rgba(168, 85, 247, 0.8);
+    animation: particles 17s infinite ease-in-out 0.8s;
+}
+
+.bg-particle-3 {
+    top: 40%;
+    left: 30%;
+    color: rgba(34, 197, 94, 0.8);
+    animation: particles 19s infinite ease-in-out 1.6s;
+}
+
+.bg-particle-4 {
+    top: 50%;
+    left: 40%;
+    color: rgba(99, 102, 241, 0.8);
+    animation: particles 21s infinite ease-in-out 2.4s;
+}
+
+.bg-particle-5 {
+    top: 60%;
+    left: 50%;
+    color: rgba(168, 85, 247, 0.8);
+    animation: particles 23s infinite ease-in-out 3.2s;
+}
+
+.bg-particle-6 {
+    top: 70%;
+    left: 60%;
+    color: rgba(34, 197, 94, 0.8);
+    animation: particles 25s infinite ease-in-out 4s;
+}
+
+.bg-music-note {
+    position: absolute;
+    width: 1.5rem;
+    height: 1.5rem;
+    color: rgba(99, 102, 241, 0.8);
+    filter: drop-shadow(0 0 10px rgba(99, 102, 241, 0.8)) drop-shadow(0 0 20px rgba(99, 102, 241, 0.4));
+}
+
+.bg-music-note-1 {
+    top: 25%;
+    left: 15%;
+    animation: musicNotes 20s infinite ease-in-out 0s;
+}
+
+.bg-music-note-2 {
+    top: 35%;
+    left: 27%;
+    animation: musicNotes 23s infinite ease-in-out 2.5s;
+}
+
+.bg-music-note-3 {
+    top: 45%;
+    left: 39%;
+    animation: musicNotes 26s infinite ease-in-out 5s;
+}
+
+.bg-music-note-4 {
+    top: 55%;
+    left: 51%;
+    animation: musicNotes 29s infinite ease-in-out 7.5s;
+}
+
+.bg-music-note-5 {
+    top: 65%;
+    left: 63%;
+    animation: musicNotes 32s infinite ease-in-out 10s;
+}
+
+.bg-music-note-6 {
+    top: 75%;
+    left: 75%;
+    animation: musicNotes 35s infinite ease-in-out 12.5s;
+}
+
+.bg-scanning-light {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 200%;
+    background: linear-gradient(90deg, transparent 0%, rgba(99, 102, 241, 0.1) 50%, transparent 100%);
+    animation: scanningLight 8s infinite linear;
+}
+
+.bg-grid {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-image: radial-gradient(circle at 2px 2px, rgba(99, 102, 241, 0.4) 1px, transparent 0);
+    background-size: 80px 80px;
+    animation: gridPulse 6s infinite ease-in-out;
+}
