@@ -204,7 +204,7 @@ def validate_audio_file(file_data, filename):
     
     return True, "Valid audio file"
 
-@app.route('/analyze', methods=['POST'])
+@app.route('/api/analyze', methods=['POST'])
 def analyze_bpm():
     start_time = time.time()
     client_ip = get_client_ip()
@@ -425,7 +425,7 @@ def admin_dashboard():
         logger.error(f"Admin dashboard error: {e}")
         return jsonify({'error': 'Failed to fetch analytics data'}), 500
 
-@app.route('/health', methods=['GET'])
+@app.route('/api/health', methods=['GET'])
 def health_check():
     try:
         memory_usage = psutil.virtual_memory().percent

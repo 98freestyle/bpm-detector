@@ -2,9 +2,9 @@ import { useState, useEffect } from "react";
 import Dropzone from "./Dropzone";
 import Loader from "./Loader";
 import Result from "./Result";
-import { motion } from "framer-motion";
+import { motion, useAnimation, useReducedMotion } from "framer-motion";
 import { useBPMDetector } from "../utils/useBPMDetector";
-import { XCircle, ExternalLink, Clock } from "lucide-react";
+import { XCircle, ExternalLink, Clock, Music, TrendingUp, Users, Zap, CheckCircle } from "lucide-react";
 
 function Hero() {
     const [fileName, setFileName] = useState(null);
@@ -17,6 +17,22 @@ function Hero() {
     const [rateLimitCountdown, setRateLimitCountdown] = useState(0);
     const bpmDetector = useBPMDetector();
     const [keyData, setKeyData] = useState(null);
+    const [showSuccess, setShowSuccess] = useState(false);
+    const [isMobile, setIsMobile] = useState(false);
+
+    const controls = useAnimation();
+    const prefersReducedMotion = useReducedMotion();
+
+    // Detect mobile and reduced motion preferences
+    useEffect(() => {
+        const checkMobile = () => {
+            setIsMobile(window.innerWidth < 768 || /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent));
+        };
+
+        checkMobile();
+        window.addEventListener('resize', checkMobile);
+        return () => window.removeEventListener('resize', checkMobile);
+    }, []);
 
     const ERROR_MESSAGES = {
         'TOO_SHORT': 'Audio file too short for BPM analysis. Minimum duration is 4 seconds.',
@@ -32,6 +48,7 @@ function Hero() {
         'TIMEOUT': 'Upload timed out. Please try a smaller file or check your connection.'
     };
 
+    // Clean up success animation logic
     useEffect(() => {
         const storedRateLimit = localStorage.getItem('rate_limit_end');
         if (storedRateLimit) {
@@ -73,14 +90,12 @@ function Hero() {
     function getErrorMessage(error) {
         const errorStr = error?.toString?.() || error || 'Unknown error';
 
-        // Check for specific backend error codes first
         for (const [code, message] of Object.entries(ERROR_MESSAGES)) {
             if (errorStr.includes(code) || errorStr.includes(message.toLowerCase())) {
                 return message;
             }
         }
 
-        // Network-specific errors
         if (errorStr.includes('Network error') || errorStr.includes('network')) {
             return ERROR_MESSAGES.NETWORK_ERROR;
         }
@@ -89,7 +104,6 @@ function Hero() {
             return ERROR_MESSAGES.TIMEOUT;
         }
 
-        // Rate limiting
         if (errorStr.includes('rate limit') || errorStr.includes('Too many requests')) {
             const endTime = Date.now() + 60000;
             localStorage.setItem('rate_limit_end', endTime.toString());
@@ -98,7 +112,6 @@ function Hero() {
             return null;
         }
 
-        // Return the actual error message from backend if it's user-friendly
         if (errorStr.length < 100 && !errorStr.includes('Backend analysis failed')) {
             return errorStr;
         }
@@ -116,6 +129,7 @@ function Hero() {
         setBpm(null);
         setKeyData(null);
         setTotalProcessingTime(null);
+        setShowSuccess(false);
         console.error("BPM Analysis Error:", errorMessage);
     }
 
@@ -132,9 +146,9 @@ function Hero() {
         }
 
         clearError();
+        setShowSuccess(false);
 
         const startTime = performance.now();
-        const uploadStartTime = performance.now();
 
         setBpm(null);
         setTotalProcessingTime(null);
@@ -185,6 +199,9 @@ function Hero() {
             const totalTime = ((endTime - startTime) / 1000).toFixed(2);
             setTotalProcessingTime(totalTime);
 
+            // Success - no animations at all
+            setShowSuccess(true);
+
             const displayName = file.name.length > 30 ?
                 file.name.substring(0, 30) + '...' :
                 file.name;
@@ -202,35 +219,237 @@ function Hero() {
     }
 
     return (
-        <section
-            className="flex items-center justify-center text-center px-6 py-32 min-h-screen bg-gradient-to-br from-gray-950 via-gray-900 to-gray-950"
-            initial={{ opacity: 0, y: 60 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8 }}
-        >
-            <div className="max-w-4xl w-full">
+        <section className="relative flex items-center justify-center text-center px-6 py-32 min-h-screen bg-gradient-to-br from-gray-950 via-gray-900 to-gray-950 overflow-hidden">
+            {/* Performance-optimized animated background */}
+            {!prefersReducedMotion && (
+                <div className="absolute inset-0 overflow-hidden">
+                    {/* Reduced complexity for mobile, full effects for desktop */}
+                    {!isMobile ? (
+                        <>
+                            {/* Desktop: Full crazy animations */}
+                            <motion.div
+                                className="absolute top-20 left-10 w-96 h-96 rounded-full blur-3xl"
+                                style={{
+                                    background: 'radial-gradient(circle, rgba(99, 102, 241, 0.3) 0%, rgba(99, 102, 241, 0.1) 50%, transparent 100%)',
+                                    boxShadow: '0 0 100px rgba(99, 102, 241, 0.4), 0 0 200px rgba(99, 102, 241, 0.2)'
+                                }}
+                                animate={{
+                                    x: [0, 200, -100, 150, 0],
+                                    y: [0, -150, 100, -50, 0],
+                                    scale: [1, 1.8, 0.6, 1.4, 1],
+                                    rotate: [0, 180, 360, 540, 720],
+                                }}
+                                transition={{
+                                    duration: 20,
+                                    repeat: Infinity,
+                                    ease: "easeInOut"
+                                }}
+                            />
+
+                            <motion.div
+                                className="absolute bottom-20 right-10 w-80 h-80 rounded-full blur-3xl"
+                                style={{
+                                    background: 'radial-gradient(circle, rgba(168, 85, 247, 0.4) 0%, rgba(168, 85, 247, 0.15) 50%, transparent 100%)',
+                                    boxShadow: '0 0 120px rgba(168, 85, 247, 0.5), 0 0 240px rgba(168, 85, 247, 0.3)'
+                                }}
+                                animate={{
+                                    x: [0, -180, 120, -80, 0],
+                                    y: [0, 120, -80, 160, 0],
+                                    scale: [1, 0.4, 2.1, 0.8, 1],
+                                    rotate: [720, 360, 0, 180, 720],
+                                }}
+                                transition={{
+                                    duration: 25,
+                                    repeat: Infinity,
+                                    ease: "easeInOut",
+                                    delay: 3
+                                }}
+                            />
+
+                            {/* Floating particles - desktop only */}
+                            {[...Array(12)].map((_, i) => (
+                                <motion.div
+                                    key={i}
+                                    className="absolute w-2 h-2 rounded-full"
+                                    style={{
+                                        left: `${Math.random() * 100}%`,
+                                        top: `${Math.random() * 100}%`,
+                                        background: `rgba(${i % 3 === 0 ? '99, 102, 241' : i % 3 === 1 ? '168, 85, 247' : '34, 197, 94'}, 0.8)`,
+                                        boxShadow: `0 0 20px rgba(${i % 3 === 0 ? '99, 102, 241' : i % 3 === 1 ? '168, 85, 247' : '34, 197, 94'}, 0.8)`
+                                    }}
+                                    animate={{
+                                        y: [0, -100, 50, -150, 0],
+                                        x: [0, 60, -40, 80, 0],
+                                        opacity: [0, 1, 0.3, 1, 0],
+                                        scale: [0, 2, 0.5, 3, 0],
+                                    }}
+                                    transition={{
+                                        duration: 15 + i * 2,
+                                        repeat: Infinity,
+                                        ease: "easeInOut",
+                                        delay: i * 0.8
+                                    }}
+                                />
+                            ))}
+
+                            {/* Glowing music notes */}
+                            {[...Array(6)].map((_, i) => (
+                                <motion.div
+                                    key={`note-${i}`}
+                                    className="absolute"
+                                    style={{
+                                        left: `${15 + (i * 12)}%`,
+                                        top: `${25 + (i * 10)}%`,
+                                    }}
+                                    animate={{
+                                        y: [0, -80, 40, -60, 0],
+                                        x: [0, 50, -30, 70, 0],
+                                        rotate: [0, 360, 180, 540, 0],
+                                        scale: [0.5, 2, 0.8, 1.5, 0.5],
+                                    }}
+                                    transition={{
+                                        duration: 20 + i * 3,
+                                        repeat: Infinity,
+                                        ease: "easeInOut",
+                                        delay: i * 2.5
+                                    }}
+                                >
+                                    <Music
+                                        className="w-6 h-6 text-brand"
+                                        style={{
+                                            filter: 'drop-shadow(0 0 10px rgba(99, 102, 241, 0.8)) drop-shadow(0 0 20px rgba(99, 102, 241, 0.4))'
+                                        }}
+                                    />
+                                </motion.div>
+                            ))}
+
+                            {/* Scanning light effect - desktop only */}
+                            <motion.div
+                                className="absolute inset-0"
+                                style={{
+                                    background: 'linear-gradient(90deg, transparent 0%, rgba(99, 102, 241, 0.1) 50%, transparent 100%)',
+                                    width: '200%',
+                                }}
+                                animate={{
+                                    x: ['-100%', '100%'],
+                                }}
+                                transition={{
+                                    duration: 8,
+                                    repeat: Infinity,
+                                    ease: "linear"
+                                }}
+                            />
+                        </>
+                    ) : (
+                        <>
+                            {/* Mobile: Simple, battery-friendly animations */}
+                            <motion.div
+                                className="absolute top-20 left-10 w-64 h-64 bg-brand/10 rounded-full blur-2xl"
+                                animate={{
+                                    x: [0, 80, 0],
+                                    y: [0, -40, 0],
+                                    scale: [1, 1.2, 1],
+                                }}
+                                transition={{
+                                    duration: 15,
+                                    repeat: Infinity,
+                                    ease: "easeInOut"
+                                }}
+                            />
+
+                            <motion.div
+                                className="absolute bottom-20 right-10 w-48 h-48 bg-accent/8 rounded-full blur-2xl"
+                                animate={{
+                                    x: [0, -60, 0],
+                                    y: [0, 60, 0],
+                                    scale: [1, 0.8, 1],
+                                }}
+                                transition={{
+                                    duration: 18,
+                                    repeat: Infinity,
+                                    ease: "easeInOut",
+                                    delay: 2
+                                }}
+                            />
+
+                            {/* Just 3 simple music notes for mobile */}
+                            {[...Array(3)].map((_, i) => (
+                                <motion.div
+                                    key={`mobile-note-${i}`}
+                                    className="absolute"
+                                    style={{
+                                        left: `${30 + (i * 20)}%`,
+                                        top: `${40 + (i * 15)}%`,
+                                    }}
+                                    animate={{
+                                        y: [0, -20, 0],
+                                        opacity: [0.3, 0.7, 0.3],
+                                    }}
+                                    transition={{
+                                        duration: 8 + i * 2,
+                                        repeat: Infinity,
+                                        ease: "easeInOut",
+                                        delay: i * 3
+                                    }}
+                                >
+                                    <Music className="w-4 h-4 text-brand/60" />
+                                </motion.div>
+                            ))}
+                        </>
+                    )}
+
+                    {/* Subtle grid for both - very lightweight */}
+                    <motion.div
+                        className="absolute inset-0 opacity-[0.03]"
+                        style={{
+                            backgroundImage: `radial-gradient(circle at 2px 2px, rgba(99, 102, 241, 0.4) 1px, transparent 0)`,
+                            backgroundSize: '80px 80px'
+                        }}
+                        animate={{
+                            opacity: [0.03, 0.08, 0.03],
+                        }}
+                        transition={{
+                            duration: 6,
+                            repeat: Infinity,
+                            ease: "easeInOut"
+                        }}
+                    />
+                </div>
+            )}
+
+            <div className="relative z-10 max-w-4xl w-full">
+                {/* Main heading */}
                 <motion.div
                     initial={{ opacity: 0, y: 30 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.2, duration: 0.8 }}
                 >
-                    <h1 className="text-6xl md:text-7xl font-black leading-tight select-none mb-6">
-                        Detect the{" "}
+                    <motion.h1
+                        className="text-6xl md:text-8xl font-black leading-tight select-none mb-6"
+                        animate={controls}
+                    >
+                        Professional{" "}
                         <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand via-brand-light to-accent">
                             BPM
                         </span>{" "}
-                        of your music instantly
-                    </h1>
+                        detection for DJs
+                    </motion.h1>
 
-                    <p className="text-xl md:text-2xl text-gray-300 font-medium select-none mb-4">
-                        Professional-grade BPM analysis for DJs and music producers
-                    </p>
+                    <motion.p
+                        className="text-xl md:text-2xl text-gray-300 font-medium select-none mb-6 max-w-3xl mx-auto leading-relaxed"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ delay: 0.4, duration: 0.8 }}
+                    >
+                        Upload any track and get instant, accurate BPM analysis with musical key detection.
+                        Trusted by DJs and producers worldwide.
+                    </motion.p>
 
-                    <div className="flex flex-col sm:flex-row items-center justify-center gap-4 text-gray-400 text-sm select-none">
-                        <span className="font-medium">Powered by advanced audio algorithms</span>
-                        <span className="hidden sm:block text-gray-600">•</span>
+
+
+                    <div className="flex flex-col sm:flex-row items-center justify-center gap-4 text-gray-500 text-sm select-none mb-8">
                         <div className="flex items-center gap-2">
-                            <span className="font-medium">Created by</span>
+                            <span className="font-medium">Crafted by</span>
                             <a
                                 href="https://djecm.club"
                                 target="_blank"
@@ -244,12 +463,16 @@ function Hero() {
                     </div>
                 </motion.div>
 
+                {/* Upload section */}
                 <motion.div
                     className="mt-12 w-full max-w-2xl mx-auto bg-gray-900/50 p-8 rounded-3xl shadow-2xl border border-gray-700/30 backdrop-blur-sm"
                     initial={{ opacity: 0, y: 40 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.4, duration: 0.8 }}
+                    transition={{ delay: 0.8, duration: 0.8 }}
                 >
+                    {/* Success celebration */}
+                    {/* Removed - keeping UI clean */}
+
                     <Dropzone
                         onFile={handleFile}
                         onError={handleError}
@@ -332,6 +555,7 @@ function Hero() {
                     <Result fileName={fileName} bpm={bpm} totalTime={totalProcessingTime} hasError={error || isRateLimited} keyData={keyData} />
                 </motion.div>
 
+                {/* Scroll indicator */}
                 <div className="mt-20 flex justify-center">
                     <motion.button
                         onClick={() => {
@@ -345,11 +569,17 @@ function Hero() {
                         className="flex items-center justify-center p-3 text-gray-400 hover:text-brand transition-colors duration-300"
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 1, duration: 0.8 }}
+                        transition={{ delay: 1.2, duration: 0.8 }}
+                        whileHover={{ scale: 1.1 }}
                     >
-                        <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-                        </svg>
+                        <motion.div
+                            animate={{ y: [0, 6, 0] }}
+                            transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+                        >
+                            <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                            </svg>
+                        </motion.div>
                     </motion.button>
                 </div>
             </div>
