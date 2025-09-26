@@ -1,10 +1,16 @@
 import { motion } from "framer-motion";
-import { Mail, Github, ExternalLink, MessageCircle } from "lucide-react";
+import { Mail, MessageCircle, User } from "lucide-react";
 
+/**
+ * Contact section
+ * Provides a polished contact form styled consistently with the rest of the site.
+ * Currently a dummy form — send button does not perform any action.
+ */
 function Contact() {
     return (
-        <section id="contact" className="py-20 bg-gray-900 border-t border-gray-800/50">
-            <div className="max-w-4xl mx-auto px-6">
+        <section id="contact" className="py-20 bg-gray-950 border-t border-gray-800/50">
+            <div className="max-w-3xl mx-auto px-6">
+                {/* Section header */}
                 <motion.div
                     initial={{ opacity: 0, y: 30 }}
                     whileInView={{ opacity: 1, y: 0 }}
@@ -18,137 +24,74 @@ function Contact() {
                             Touch
                         </span>
                     </h2>
-                    <p className="text-xl text-gray-400 font-medium select-none">
-                        Questions, feedback, or suggestions? We'd love to hear from you
+                    <p className="text-lg text-gray-400 font-medium select-none max-w-xl mx-auto">
+                        Questions, feedback, or support? Reach out any time at{" "}
+                        <span className="font-semibold text-brand">support@djbpm.club</span> or use the form below.
                     </p>
                 </motion.div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
-                    {/* Contact Methods */}
-                    <motion.div
-                        className="space-y-6"
-                        initial={{ opacity: 0, x: -30 }}
-                        whileInView={{ opacity: 1, x: 0 }}
-                        transition={{ delay: 0.2, duration: 0.8 }}
-                        viewport={{ once: true }}
-                    >
-                        <div className="bg-gradient-to-br from-gray-800/60 to-gray-700/40 rounded-2xl p-6 border border-gray-600/30">
-                            <div className="flex items-center gap-4 mb-4">
-                                <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-brand/20 to-brand/10 flex items-center justify-center">
-                                    <Mail className="w-5 h-5 text-brand" />
-                                </div>
-                                <h3 className="text-lg font-bold text-gray-100 select-none">Email</h3>
-                            </div>
-                            <p className="text-gray-400 mb-3 select-none font-medium">
-                                For general inquiries, bug reports, or feature requests
-                            </p>
-                            <a
-                                href="mailto:contact@bpmanalyzer.com"
-                                className="text-brand hover:text-brand-light transition-colors font-semibold"
-                            >
-                                contact@bpmanalyzer.com
-                            </a>
-                        </div>
-
-                        <div className="bg-gradient-to-br from-gray-800/60 to-gray-700/40 rounded-2xl p-6 border border-gray-600/30">
-                            <div className="flex items-center gap-4 mb-4">
-                                <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-brand/20 to-brand/10 flex items-center justify-center">
-                                    <Github className="w-5 h-5 text-brand" />
-                                </div>
-                                <h3 className="text-lg font-bold text-gray-100 select-none">GitHub</h3>
-                            </div>
-                            <p className="text-gray-400 mb-3 select-none font-medium">
-                                Open source contributions and technical discussions
-                            </p>
-                            <a
-                                href="https://github.com/yourusername/bpm-analyzer"
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="inline-flex items-center gap-2 text-brand hover:text-brand-light transition-colors font-semibold"
-                            >
-                                View Repository
-                                <ExternalLink className="w-4 h-4" />
-                            </a>
-                        </div>
-                    </motion.div>
-
-                    {/* Quick Message */}
-                    <motion.div
-                        className="bg-gradient-to-br from-gray-800/60 to-gray-700/40 rounded-2xl p-8 border border-gray-600/30"
-                        initial={{ opacity: 0, x: 30 }}
-                        whileInView={{ opacity: 1, x: 0 }}
-                        transition={{ delay: 0.4, duration: 0.8 }}
-                        viewport={{ once: true }}
-                    >
-                        <div className="flex items-center gap-3 mb-6">
-                            <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-brand/20 to-brand/10 flex items-center justify-center">
-                                <MessageCircle className="w-5 h-5 text-brand" />
-                            </div>
-                            <h3 className="text-lg font-bold text-gray-100 select-none">Quick Message</h3>
-                        </div>
-
-                        <div className="space-y-4">
-                            <div>
-                                <label className="block text-sm font-semibold text-gray-300 mb-2 select-none">
-                                    Subject
-                                </label>
-                                <input
-                                    type="text"
-                                    className="w-full px-4 py-3 bg-gray-900/60 border border-gray-600/30 rounded-lg text-gray-100 placeholder-gray-500 focus:border-brand/50 focus:outline-none transition-colors"
-                                    placeholder="What's this about?"
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-semibold text-gray-300 mb-2 select-none">
-                                    Message
-                                </label>
-                                <textarea
-                                    rows="4"
-                                    className="w-full px-4 py-3 bg-gray-900/60 border border-gray-600/30 rounded-lg text-gray-100 placeholder-gray-500 focus:border-brand/50 focus:outline-none transition-colors resize-none"
-                                    placeholder="Tell us what's on your mind..."
-                                ></textarea>
-                            </div>
-                            <button className="w-full py-3 bg-gradient-to-r from-brand to-brand-light text-white font-bold rounded-lg hover:from-brand-light hover:to-brand transition-all duration-200 select-none">
-                                Send Message
-                            </button>
-                        </div>
-                    </motion.div>
-                </div>
-
-                {/* Creator Credit */}
-                <motion.div
-                    className="text-center"
-                    initial={{ opacity: 0, y: 20 }}
+                {/* Contact form (dummy for now) */}
+                <motion.form
+                    className="space-y-6 bg-gradient-to-br from-gray-900/60 to-gray-800/40 rounded-2xl p-8 border border-gray-700/30 backdrop-blur-sm"
+                    initial={{ opacity: 0, y: 40 }}
                     whileInView={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.6, duration: 0.8 }}
+                    transition={{ delay: 0.2, duration: 0.8 }}
                     viewport={{ once: true }}
+                    onSubmit={(e) => e.preventDefault()}
                 >
-                    <div className="inline-flex items-center gap-2 px-6 py-3 bg-gray-800/40 rounded-full border border-gray-700/30">
-                        <span className="text-gray-400 font-medium select-none">
-                            Created by
-                        </span>
-                        <a
-                            href="https://djecm.club"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1 text-brand hover:text-brand-light transition-colors font-bold"
-                        >
-                            DJ ECM
-                            <ExternalLink className="w-3 h-3" />
-                        </a>
+                    {/* Name */}
+                    <div>
+                        <label className="block text-sm font-semibold text-gray-300 mb-2 select-none">
+                            Your Name
+                        </label>
+                        <div className="relative">
+                            <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+                            <input
+                                type="text"
+                                placeholder="John Doe"
+                                className="w-full pl-10 pr-4 py-3 bg-gray-900/60 border border-gray-600/30 rounded-lg text-gray-100 placeholder-gray-500 focus:border-brand/50 focus:outline-none transition-colors"
+                            />
+                        </div>
                     </div>
-                </motion.div>
 
-                {/* Bottom accent */}
-                <motion.div
-                    className="mt-16 flex justify-center"
-                    initial={{ opacity: 0 }}
-                    whileInView={{ opacity: 1 }}
-                    transition={{ delay: 0.8, duration: 0.8 }}
-                    viewport={{ once: true }}
-                >
-                    <div className="w-32 h-0.5 bg-gradient-to-r from-transparent via-brand/40 to-transparent rounded-full"></div>
-                </motion.div>
+                    {/* Email */}
+                    <div>
+                        <label className="block text-sm font-semibold text-gray-300 mb-2 select-none">
+                            Email Address
+                        </label>
+                        <div className="relative">
+                            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+                            <input
+                                type="email"
+                                placeholder="you@example.com"
+                                className="w-full pl-10 pr-4 py-3 bg-gray-900/60 border border-gray-600/30 rounded-lg text-gray-100 placeholder-gray-500 focus:border-brand/50 focus:outline-none transition-colors"
+                            />
+                        </div>
+                    </div>
+
+                    {/* Message */}
+                    <div>
+                        <label className="block text-sm font-semibold text-gray-300 mb-2 select-none">
+                            Message
+                        </label>
+                        <div className="relative">
+                            <MessageCircle className="absolute left-3 top-4 w-4 h-4 text-gray-500" />
+                            <textarea
+                                rows="4"
+                                placeholder="Tell us what's on your mind..."
+                                className="w-full pl-10 pr-4 py-3 bg-gray-900/60 border border-gray-600/30 rounded-lg text-gray-100 placeholder-gray-500 focus:border-brand/50 focus:outline-none transition-colors resize-none"
+                            ></textarea>
+                        </div>
+                    </div>
+
+                    {/* Submit button (dummy) */}
+                    <button
+                        type="submit"
+                        className="w-full py-3 bg-gradient-to-r from-brand to-brand-light text-white font-bold rounded-lg hover:from-brand-light hover:to-brand transition-all duration-200 select-none"
+                    >
+                        Send Message
+                    </button>
+                </motion.form>
             </div>
         </section>
     );

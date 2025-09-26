@@ -1,48 +1,32 @@
 import { motion } from "framer-motion";
 
 /**
- * Loading spinner component displayed during file upload and BPM analysis
- * Features a gradient ring with smooth rotation animation
+ * Loader component
+ * Displays a clean gradient spinner with subtle glow,
+ * used during file uploads and BPM analysis.
  */
 function Loader() {
     return (
         <div className="flex justify-center">
             <motion.div
-                className="relative w-10 h-10"
+                className="relative w-12 h-12"
                 initial={{ opacity: 0, scale: 0.8 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ duration: 0.3 }}
             >
-                {/* Outer gradient ring */}
-                <div className="absolute inset-0 rounded-full bg-gradient-to-r from-brand via-brand-light to-accent opacity-20"></div>
+                {/* Outer glow ring */}
+                <div className="absolute inset-0 rounded-full bg-gradient-to-r from-brand via-brand-light to-accent opacity-20 blur-sm"></div>
 
-                {/* Spinning gradient border */}
+                {/* Rotating gradient ring */}
                 <motion.div
-                    className="absolute inset-0 rounded-full bg-gradient-to-r from-brand via-brand-light to-accent"
+                    className="absolute inset-0 rounded-full border-4 border-transparent"
                     style={{
-                        mask: "radial-gradient(circle at center, transparent 6px, black 6px)",
-                        WebkitMask: "radial-gradient(circle at center, transparent 6px, black 6px)"
+                        borderTopColor: "rgb(99,102,241)",   // brand
+                        borderRightColor: "rgb(168,85,247)", // brand-light
+                        borderBottomColor: "rgb(34,197,94)"  // accent
                     }}
                     animate={{ rotate: 360 }}
-                    transition={{
-                        duration: 1.2,
-                        repeat: Infinity,
-                        ease: "linear"
-                    }}
-                />
-
-                {/* Inner dot for visual interest */}
-                <motion.div
-                    className="absolute top-1/2 left-1/2 w-2 h-2 bg-brand rounded-full transform -translate-x-1/2 -translate-y-1/2"
-                    animate={{
-                        scale: [1, 1.2, 1],
-                        opacity: [0.6, 1, 0.6]
-                    }}
-                    transition={{
-                        duration: 1.5,
-                        repeat: Infinity,
-                        ease: "easeInOut"
-                    }}
+                    transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
                 />
             </motion.div>
         </div>

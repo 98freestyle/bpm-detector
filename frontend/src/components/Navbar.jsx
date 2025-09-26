@@ -21,6 +21,20 @@ function Navbar() {
         return () => window.removeEventListener('scroll', handleScroll);
     }, []);
 
+    // Lock body scrolling when mobile menu is open (prevents background scroll)
+    useEffect(() => {
+        if (menuOpen) {
+            // remember previous overflow to be safe
+            const prev = document.body.style.overflow;
+            document.body.style.overflow = "hidden";
+            return () => {
+                document.body.style.overflow = prev || "";
+            };
+        } else {
+            document.body.style.overflow = "";
+        }
+    }, [menuOpen]);
+
     /**
      * Smooth scroll to section with offset for fixed navbar
      * @param {string} id - Target section ID
@@ -53,8 +67,8 @@ function Navbar() {
     return (
         <motion.nav
             className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${scrolled
-                    ? 'bg-gray-900/80 backdrop-blur-xl border-gray-700/50 shadow-2xl'
-                    : 'bg-gray-900/40 backdrop-blur-md border-gray-800/30 shadow-lg'
+                ? 'bg-gray-900/80 backdrop-blur-xl border-gray-700/50 shadow-2xl'
+                : 'bg-gray-900/40 backdrop-blur-md border-gray-800/30 shadow-lg'
                 } border-b`}
             initial={{ y: -100, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
