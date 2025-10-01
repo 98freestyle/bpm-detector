@@ -61,7 +61,6 @@ function Navbar() {
     const navItems = [
         { id: 'features', label: 'Features' },
         { id: 'faq', label: 'FAQ' },
-        { id: 'contact', label: 'Contact' }
     ];
 
     return (

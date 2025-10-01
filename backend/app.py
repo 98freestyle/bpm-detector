@@ -11,9 +11,9 @@ import magic
 import psutil
 import redis
 import re
+import json
 from werkzeug.utils import secure_filename
 from functools import wraps
-import base64
 from datetime import datetime, timedelta
 
 load_dotenv()
@@ -72,7 +72,7 @@ def require_auth(f):
         return f(*args, **kwargs)
     return decorated
 
-def track_analytics(event_type, **kwargs):
+def track_analytics(event_type, error_message=None, **kwargs):
     """Track analytics in Redis"""
     if not redis_client:
         return
@@ -91,6 +91,19 @@ def track_analytics(event_type, **kwargs):
             if value:
                 safe_value = re.sub(r'[^a-zA-Z0-9_-]', '_', str(value))
                 redis_client.incr(f"analytics:{event_type}:{key}:{safe_value}")
+        
+        # Store individual error details
+        if event_type == 'errors' and error_message:
+            timestamp = int(time.time() * 1000)
+            error_id = f"analytics:errors:recent:{timestamp}"
+            error_data = {
+                "type": kwargs.get('error_type', 'unknown'),
+                "message": error_message,
+                "ip": get_client_ip(),
+                "timestamp": datetime.now().isoformat(),
+                "user_agent": request.headers.get('User-Agent', 'Unknown')[:200]
+            }
+            redis_client.setex(error_id, 604800, json.dumps(error_data))
         
         # Set expiration for hourly keys (30 days)
         redis_client.expire(f"analytics:hourly:{hour}:{event_type}", 30 * 24 * 3600)
@@ -139,7 +152,7 @@ def rate_limit_check(ip_address):
 
     except Exception as e:
         logger.error(f"Redis rate limiting error: {e}")
-        return True, "OK"  # Fail open
+        return True, "OK"
 
 def check_system_resources():
     try:
@@ -220,23 +233,23 @@ def analyze_bpm():
         rate_ok, rate_msg = rate_limit_check(client_ip)
         if not rate_ok:
             logger.warning(f"Rate limit exceeded for IP {client_ip}: {rate_msg}")
-            track_analytics('errors', error_type='rate_limited')
+            track_analytics('errors', error_message=rate_msg, error_type='rate_limited')
             return error_response('RATE_LIMITED', rate_msg, 429)
         
         # System resource check
         resource_ok, resource_msg = check_system_resources()
         if not resource_ok:
             logger.warning(f"Resource limit hit: {resource_msg}")
-            track_analytics('errors', error_type='resource_limit')
+            track_analytics('errors', error_message=resource_msg, error_type='resource_limit')
             return error_response('SERVICE_OVERLOADED', 'Service temporarily overloaded. Please try again in a few minutes.', 503)
         
         if 'audio' not in request.files:
-            track_analytics('errors', error_type='no_file')
+            track_analytics('errors', error_message='No audio file provided', error_type='no_file')
             return error_response('NO_FILE', 'No audio file provided')
         
         file = request.files['audio']
         if not file or not file.filename:
-            track_analytics('errors', error_type='empty_file')
+            track_analytics('errors', error_message='Empty file or missing filename', error_type='empty_file')
             return error_response('EMPTY_FILE', 'Empty file or missing filename')
         
         file.seek(0)
@@ -253,7 +266,7 @@ def analyze_bpm():
         is_valid, validation_msg = validate_audio_file(file_data, file.filename)
         if not is_valid:
             logger.warning(f"File validation failed: {validation_msg}")
-            track_analytics('errors', error_type='invalid_file')
+            track_analytics('errors', error_message=validation_msg, error_type='invalid_file')
             return error_response('INVALID_FILE', validation_msg)
         
         with tempfile.NamedTemporaryFile(delete=False, suffix='.wav') as tmp:
@@ -265,15 +278,15 @@ def analyze_bpm():
             audio = loader()
         except Exception as e:
             logger.error(f"Failed to load audio file: {str(e)}")
-            track_analytics('errors', error_type='corrupt_file')
+            track_analytics('errors', error_message=f'Failed to load: {str(e)}', error_type='corrupt_file')
             return error_response('CORRUPT_FILE', 'Audio file is corrupted or unsupported')
         
         if len(audio) == 0:
-            track_analytics('errors', error_type='empty_audio')
+            track_analytics('errors', error_message='Audio file contains no audio data', error_type='empty_audio')
             return error_response('EMPTY_AUDIO', 'Audio file contains no audio data')
         
         if len(audio) < MIN_AUDIO_DURATION:
-            track_analytics('errors', error_type='too_short')
+            track_analytics('errors', error_message='Audio file too short', error_type='too_short')
             return error_response('TOO_SHORT', 'Audio file too short for BPM analysis (minimum 4 seconds)')
         
         max_samples = 60 * 44100
@@ -286,12 +299,12 @@ def analyze_bpm():
             bpm, beats, beats_confidence, _, beats_intervals = rhythm_extractor(audio)
         except Exception as e:
             logger.error(f"BPM analysis failed: {str(e)}")
-            track_analytics('errors', error_type='analysis_failed')
+            track_analytics('errors', error_message=f'BPM analysis failed: {str(e)}', error_type='analysis_failed')
             return error_response('ANALYSIS_FAILED', 'BPM analysis failed. Audio may have irregular rhythm or be too quiet', 500)
         
         if not bpm or bpm <= 0 or bpm > 300:
             logger.warning(f"Invalid BPM detected: {bpm}")
-            track_analytics('errors', error_type='invalid_bpm')
+            track_analytics('errors', error_message=f'Invalid BPM detected: {bpm}', error_type='invalid_bpm')
             return error_response('INVALID_BPM', 'Could not detect valid BPM. Audio may have irregular rhythm or be too quiet', 422)
         
         bpm_result = round(float(bpm), 1)
@@ -344,7 +357,7 @@ def analyze_bpm():
     except Exception as e:
         total_time = time.time() - start_time
         logger.error(f"Unexpected error during BPM analysis after {total_time:.2f}s: {str(e)}")
-        track_analytics('errors', error_type='server_error')
+        track_analytics('errors', error_message=str(e), error_type='server_error')
         return error_response('SERVER_ERROR', 'Internal server error during audio processing', 500)
         
     finally:
@@ -365,10 +378,10 @@ def admin_dashboard():
         total_requests = int(redis_client.get('analytics:total:requests') or 0)
         total_successes = int(redis_client.get('analytics:total:successes') or 0)
         total_errors = int(redis_client.get('analytics:total:errors') or 0)
-        total_rate_limited = int(redis_client.get('analytics:total:rate_limited') or 0)
         
-        # Calculate success rate
+        # Calculate rates
         success_rate = round((total_successes / total_requests * 100) if total_requests > 0 else 0, 1)
+        error_rate = round((total_errors / total_requests * 100) if total_requests > 0 else 0, 1)
         
         # Get recent daily stats (last 7 days)
         daily_stats = []
@@ -376,32 +389,31 @@ def admin_dashboard():
             date = (datetime.now() - timedelta(days=i)).strftime('%Y-%m-%d')
             requests = int(redis_client.get(f'analytics:daily:{date}:requests') or 0)
             successes = int(redis_client.get(f'analytics:daily:{date}:successes') or 0)
+            errors = int(redis_client.get(f'analytics:daily:{date}:errors') or 0)
             daily_stats.append({
                 'date': date,
                 'requests': requests,
-                'successes': successes
+                'successes': successes,
+                'errors': errors
             })
         
-        # Get file format stats
-        format_keys = redis_client.keys('analytics:file_formats:format:*')
-        file_formats = {}
-        for key in format_keys:
-            format_name = key.split(':')[-1]
-            count = int(redis_client.get(key) or 0)
-            file_formats[format_name] = count
-        
-        # Get BPM range stats
-        bpm_keys = redis_client.keys('analytics:bpm_ranges:range:*')
-        bpm_ranges = {}
-        for key in bpm_keys:
-            range_name = key.split(':')[-1]
-            count = int(redis_client.get(key) or 0)
-            bpm_ranges[range_name] = count
-        
-        # Get key detection stats
-        key_success = int(redis_client.get('analytics:key_detection:success:true') or 0)
-        key_failure = int(redis_client.get('analytics:key_detection:success:false') or 0)
-        key_success_rate = round((key_success / (key_success + key_failure) * 100) if (key_success + key_failure) > 0 else 0, 1)
+        # Recent errors
+        recent_errors = []
+        error_log_keys = redis_client.keys('analytics:errors:recent:*')
+        for key in sorted(error_log_keys, reverse=True)[:20]:
+            error_data = redis_client.get(key)
+            if error_data:
+                try:
+                    err = json.loads(error_data)
+                    recent_errors.append({
+                        "type": err.get("type", "unknown"),
+                        "message": err.get("message", ""),
+                        "ip": err.get("ip", "N/A"),
+                        "timestamp": err.get("timestamp", ""),
+                        "user_agent": err.get("user_agent", "")
+                    })
+                except:
+                    pass
         
         return jsonify({
             'summary': {
@@ -409,15 +421,11 @@ def admin_dashboard():
                 'total_successes': total_successes,
                 'total_errors': total_errors,
                 'success_rate': success_rate,
-                'rate_limited': total_rate_limited
+                'error_rate': error_rate
             },
-            'daily_stats': daily_stats,
-            'file_formats': file_formats,
-            'bpm_ranges': bpm_ranges,
-            'key_detection': {
-                'success_rate': key_success_rate,
-                'successful': key_success,
-                'failed': key_failure
+            'daily_stats': list(reversed(daily_stats)),
+            'errors': {
+                'recent_errors': recent_errors
             }
         })
         
@@ -462,7 +470,7 @@ def health_check():
 
 @app.errorhandler(413)
 def request_entity_too_large(error):
-    track_analytics('errors', error_type='file_too_large')
+    track_analytics('errors', error_message='File too large', error_type='file_too_large')
     return error_response('FILE_TOO_LARGE', f'File too large. Maximum allowed size is {MAX_FILE_SIZE // (1024*1024)}MB.', 413)
 
 @app.errorhandler(429)
