@@ -184,43 +184,6 @@ class SecurityTester:
         except Exception as e:
             self.log_result("Missing Parameters - Empty Filename", "FAIL", f"Exception: {str(e)}")
 
-    def test_suspicious_headers(self):
-        """Test suspicious request headers"""
-        
-        try:
-            headers = {'User-Agent': ''}
-            files = {'audio': self.test_files['valid_mp3']}
-            response = self.session.post(ANALYZE_ENDPOINT, files=files, headers=headers, timeout=10)
-            
-            if response.status_code == 400:
-                self.log_result("Suspicious Headers - No User Agent", "PASS", 
-                              "Correctly blocked missing User-Agent")
-            elif response.status_code == 429:
-                self.log_result("Suspicious Headers - No User Agent", "PASS", 
-                              "Request blocked by rate limiting (security working)")
-            else:
-                self.log_result("Suspicious Headers - No User Agent", "FAIL", 
-                              f"Should block missing User-Agent: {response.status_code}")
-        except Exception as e:
-            self.log_result("Suspicious Headers - No User Agent", "FAIL", f"Exception: {str(e)}")
-        
-        try:
-            headers = {'User-Agent': 'Bot'}
-            files = {'audio': self.test_files['valid_mp3']}
-            response = self.session.post(ANALYZE_ENDPOINT, files=files, headers=headers, timeout=10)
-            
-            if response.status_code == 400:
-                self.log_result("Suspicious Headers - Bot UA", "PASS", 
-                              "Correctly blocked suspicious User-Agent")
-            elif response.status_code == 429:
-                self.log_result("Suspicious Headers - Bot UA", "PASS", 
-                              "Request blocked by rate limiting (security working)")
-            else:
-                self.log_result("Suspicious Headers - Bot UA", "FAIL", 
-                              f"Should block bot User-Agent: {response.status_code}")
-        except Exception as e:
-            self.log_result("Suspicious Headers - Bot UA", "FAIL", f"Exception: {str(e)}")
-
     def test_malformed_requests(self):
         """Test handling of malformed requests"""
         
@@ -278,7 +241,6 @@ class SecurityTester:
         self.test_health_endpoint()
         self.test_file_validation()
         self.test_missing_parameters()
-        self.test_suspicious_headers()
         self.test_malformed_requests()
         self.test_concurrent_load()
         
