@@ -1,8 +1,7 @@
 from flask import Flask, request, jsonify
-from flask_cors import CORS
 from dotenv import load_dotenv
-import essentia
 import essentia.standard as es
+import hmac
 import tempfile
 import os
 import time
@@ -19,22 +18,23 @@ from datetime import datetime, timedelta
 load_dotenv()
 
 app = Flask(__name__)
-CORS(app)
 
-# Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Configuration
 MAX_FILE_SIZE = 150 * 1024 * 1024  # 150MB
+MAX_REQUEST_SIZE = 200 * 1024 * 1024  # 200MB, matches nginx client_max_body_size
 MIN_FILE_SIZE = 1024  # 1KB
 MIN_AUDIO_DURATION = 176400  # 4 seconds at 44.1kHz
 MAX_PER_MINUTE = 10
 MAX_PER_HOUR = 100
 MAX_MEMORY_USAGE = 80  # Percentage
 MAX_CPU_USAGE = 90   # Percentage
+MAX_ADMIN_FAILURES = 5
+ADMIN_LOCKOUT_SECONDS = 900
 
-# Admin credentials
+app.config['MAX_CONTENT_LENGTH'] = MAX_REQUEST_SIZE
+
 ADMIN_USERNAME = os.getenv("ADMIN_USERNAME")
 ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD")
 
@@ -47,7 +47,6 @@ except redis.ConnectionError:
     logger.error("Redis connection failed. Rate limiting disabled.")
     redis_client = None
 
-# Supported audio formats
 AUDIO_SIGNATURES = {
     b'\xFF\xFB': 'audio/mpeg',  # MP3
     b'\xFF\xF3': 'audio/mpeg',  # MP3
@@ -60,15 +59,38 @@ AUDIO_SIGNATURES = {
 }
 
 def error_response(code, message, status=400):
-    """Standardized error response"""
     return jsonify({'error_code': code, 'error': message}), status
 
 def require_auth(f):
     @wraps(f)
     def decorated(*args, **kwargs):
+        challenge = ('', 401, {'WWW-Authenticate': 'Basic realm="Admin"'})
         auth = request.authorization
-        if not auth or not (auth.username == ADMIN_USERNAME and auth.password == ADMIN_PASSWORD):
-            return ('', 401, {'WWW-Authenticate': 'Basic realm="Admin"'})
+        if not auth:
+            return challenge
+
+        client_ip = get_client_ip()
+        fail_key = f"admin_failures:{client_ip}"
+        if redis_client:
+            try:
+                if int(redis_client.get(fail_key) or 0) >= MAX_ADMIN_FAILURES:
+                    return error_response('RATE_LIMITED', 'Too many failed attempts. Try again later.', 429)
+            except redis.RedisError as e:
+                logger.error(f"Admin lockout check failed: {e}")
+
+        username_ok = hmac.compare_digest((auth.username or '').encode(), (ADMIN_USERNAME or '').encode())
+        password_ok = hmac.compare_digest((auth.password or '').encode(), (ADMIN_PASSWORD or '').encode())
+        if not (ADMIN_USERNAME and ADMIN_PASSWORD and username_ok and password_ok):
+            logger.warning(f"Failed admin login from {client_ip}")
+            if redis_client:
+                try:
+                    pipe = redis_client.pipeline()
+                    pipe.incr(fail_key)
+                    pipe.expire(fail_key, ADMIN_LOCKOUT_SECONDS)
+                    pipe.execute()
+                except redis.RedisError as e:
+                    logger.error(f"Admin failure tracking failed: {e}")
+            return challenge
         return f(*args, **kwargs)
     return decorated
 
@@ -81,7 +103,6 @@ def track_analytics(event_type, error_message=None, **kwargs):
         today = datetime.now().strftime('%Y-%m-%d')
         hour = datetime.now().strftime('%Y-%m-%d-%H')
         
-        # Increment counters
         redis_client.incr(f"analytics:total:{event_type}")
         redis_client.incr(f"analytics:daily:{today}:{event_type}")
         redis_client.incr(f"analytics:hourly:{hour}:{event_type}")
@@ -112,11 +133,9 @@ def track_analytics(event_type, error_message=None, **kwargs):
         logger.error(f"Analytics tracking failed: {e}")
 
 def get_client_ip():
-    if request.headers.get('X-Forwarded-For'):
-        return request.headers.get('X-Forwarded-For').split(',')[0].strip()
-    elif request.headers.get('X-Real-IP'):
-        return request.headers.get('X-Real-IP')
-    return request.remote_addr
+    # Only nginx can reach this app, and it sets X-Real-IP from the socket address.
+    # X-Forwarded-For is client controlled, so it is deliberately ignored.
+    return request.headers.get('X-Real-IP') or request.remote_addr
 
 def rate_limit_check(ip_address):
     if not redis_client:
@@ -184,7 +203,7 @@ def validate_audio_file(file_data, filename):
     file_header = file_data[:20]
     is_valid_audio = False
     
-    for signature, mime_type in AUDIO_SIGNATURES.items():
+    for signature in AUDIO_SIGNATURES:
         if file_header.startswith(signature):
             is_valid_audio = True
             break
@@ -226,17 +245,14 @@ def analyze_bpm():
     temp_path = None
     
     try:
-        # Track request
         track_analytics('requests')
         
-        # Rate limit check
         rate_ok, rate_msg = rate_limit_check(client_ip)
         if not rate_ok:
             logger.warning(f"Rate limit exceeded for IP {client_ip}: {rate_msg}")
             track_analytics('errors', error_message=rate_msg, error_type='rate_limited')
             return error_response('RATE_LIMITED', rate_msg, 429)
         
-        # System resource check
         resource_ok, resource_msg = check_system_resources()
         if not resource_ok:
             logger.warning(f"Resource limit hit: {resource_msg}")
@@ -259,7 +275,6 @@ def analyze_bpm():
         file_size = len(file_data)
         logger.info(f"Processing file: {file.filename} ({file_size / (1024*1024):.1f}MB) from IP {client_ip}")
         
-        # Get file extension for tracking
         file_ext = os.path.splitext(file.filename)[1].lower().replace('.', '') or 'unknown'
         track_analytics('file_formats', format=file_ext)
         
@@ -309,7 +324,6 @@ def analyze_bpm():
         
         bpm_result = round(float(bpm), 1)
         
-        # Track BPM ranges
         bpm_range = f"{int(bpm_result // 20) * 20}-{int(bpm_result // 20) * 20 + 19}"
         track_analytics('bpm_ranges', range=bpm_range)
         
@@ -335,7 +349,6 @@ def analyze_bpm():
         total_time = time.time() - start_time
         logger.info(f"Analysis complete: {bpm_result} BPM in {total_time:.2f}s for IP {client_ip}")
         
-        # Track processing time ranges
         time_range = f"{int(total_time)}s" if total_time < 10 else "10s+"
         track_analytics('processing_times', range=time_range)
         track_analytics('successes')
@@ -374,12 +387,10 @@ def admin_dashboard():
         return jsonify({'error': 'Analytics not available - Redis not connected'}), 503
     
     try:
-        # Get basic stats
         total_requests = int(redis_client.get('analytics:total:requests') or 0)
         total_successes = int(redis_client.get('analytics:total:successes') or 0)
         total_errors = int(redis_client.get('analytics:total:errors') or 0)
         
-        # Calculate rates
         success_rate = round((total_successes / total_requests * 100) if total_requests > 0 else 0, 1)
         error_rate = round((total_errors / total_requests * 100) if total_requests > 0 else 0, 1)
         
@@ -397,9 +408,8 @@ def admin_dashboard():
                 'errors': errors
             })
         
-        # Recent errors
         recent_errors = []
-        error_log_keys = redis_client.keys('analytics:errors:recent:*')
+        error_log_keys = list(redis_client.scan_iter(match='analytics:errors:recent:*', count=100))
         for key in sorted(error_log_keys, reverse=True)[:20]:
             error_data = redis_client.get(key)
             if error_data:
@@ -412,7 +422,7 @@ def admin_dashboard():
                         "timestamp": err.get("timestamp", ""),
                         "user_agent": err.get("user_agent", "")
                     })
-                except:
+                except json.JSONDecodeError:
                     pass
         
         return jsonify({
@@ -436,37 +446,12 @@ def admin_dashboard():
 @app.route('/api/health', methods=['GET'])
 def health_check():
     try:
-        memory_usage = psutil.virtual_memory().percent
-        cpu_usage = psutil.cpu_percent(interval=0.1)
-        
-        redis_status = "healthy"
-        if redis_client:
-            try:
-                redis_client.ping()
-            except:
-                redis_status = "unhealthy"
-        else:
-            redis_status = "disabled"
-        
-        status = {
-            'status': 'healthy',
-            'service': 'bpm-analyzer',
-            'memory_usage': f"{memory_usage}%",
-            'cpu_usage': f"{cpu_usage}%",
-            'redis': redis_status
-        }
-        
-        if memory_usage > 95 or cpu_usage > 95:
-            status['status'] = 'unhealthy'
-            return jsonify(status), 503
-            
-        return jsonify(status)
-        
+        if psutil.virtual_memory().percent > 95 or psutil.cpu_percent(interval=0.1) > 95:
+            return jsonify({'status': 'unhealthy'}), 503
+        return jsonify({'status': 'healthy'})
     except Exception as e:
-        return jsonify({
-            'status': 'unhealthy', 
-            'error': str(e)
-        }), 503
+        logger.error(f"Health check failed: {e}")
+        return jsonify({'status': 'unhealthy'}), 503
 
 @app.errorhandler(413)
 def request_entity_too_large(error):
@@ -479,4 +464,4 @@ def ratelimit_handler(error):
 
 if __name__ == '__main__':
     logger.info("Starting BPM Analyzer backend with analytics")
-    app.run(debug=True, host='0.0.0.0', port=8001)
+    app.run(debug=False, host='127.0.0.1', port=8001)
