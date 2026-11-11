@@ -57,7 +57,6 @@ function Navbar() {
         setMenuOpen(false);
     };
 
-    // Navigation items configuration
     const navItems = [
         { id: 'features', label: 'Features' },
         { id: 'faq', label: 'FAQ' },
@@ -75,7 +74,6 @@ function Navbar() {
         >
             <div className="max-w-7xl mx-auto px-6 py-4">
                 <div className="flex justify-between items-center">
-                    {/* Brand Logo */}
                     <motion.div
                         className="flex items-center gap-3 cursor-pointer group"
                         onClick={scrollToTop}
@@ -85,16 +83,13 @@ function Navbar() {
                         whileHover={{ scale: 1.05 }}
                         whileTap={{ scale: 0.98 }}
                     >
-                        {/* Logo Icon */}
                         <div className="relative">
                             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-brand/20 to-brand/10 flex items-center justify-center border border-brand/20 group-hover:border-brand/40 transition-colors duration-300">
                                 <Music2 className="w-5 h-5 text-brand group-hover:text-brand-light transition-colors duration-300" />
                             </div>
-                            {/* Subtle glow effect */}
                             <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-brand/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 blur-sm"></div>
                         </div>
 
-                        {/* Brand Text */}
                         <div>
                             <h1 className="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-brand to-brand-light select-none tracking-tight">
                                 DJBPM
@@ -102,7 +97,6 @@ function Navbar() {
                         </div>
                     </motion.div>
 
-                    {/* Desktop Navigation */}
                     <motion.div
                         className="hidden md:flex items-center gap-2"
                         initial={{ opacity: 0, x: 30 }}
@@ -122,7 +116,6 @@ function Navbar() {
                             >
                                 {item.label}
 
-                                {/* Hover underline effect */}
                                 <motion.div
                                     className="absolute bottom-1 left-1/2 h-0.5 bg-gradient-to-r from-brand to-brand-light rounded-full"
                                     initial={{ width: 0, x: "-50%" }}
@@ -133,7 +126,6 @@ function Navbar() {
                         ))}
                     </motion.div>
 
-                    {/* Mobile Menu Button */}
                     <motion.button
                         className="md:hidden p-3 rounded-xl hover:bg-gray-800/40 border border-gray-700/30 backdrop-blur-sm transition-all duration-300"
                         onClick={() => setMenuOpen(!menuOpen)}
@@ -157,7 +149,6 @@ function Navbar() {
                 </div>
             </div>
 
-            {/* Mobile Menu Dropdown */}
             <motion.div
                 className="md:hidden overflow-hidden bg-gray-900/95 backdrop-blur-xl border-t border-gray-700/30"
                 initial={false}
@@ -191,7 +182,6 @@ function Navbar() {
                         </motion.button>
                     ))}
 
-                    {/* Mobile CTA */}
                     <motion.button
                         onClick={scrollToTop}
                         className="w-full mt-4 py-4 px-6 bg-gradient-to-r from-brand to-brand-light text-white font-bold rounded-xl hover:from-brand-light hover:to-brand transition-all duration-300 shadow-lg border border-brand/20 select-none"

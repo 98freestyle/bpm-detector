@@ -61,7 +61,6 @@ function Features() {
                             viewport={{ once: true }}
                             whileHover={{ y: -8 }}
                         >
-                            {/* Subtle glow effect on hover */}
                             <div className="absolute inset-0 bg-gradient-to-br from-brand/5 to-transparent rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
 
                             <div className="relative z-10">
@@ -90,7 +89,6 @@ function Features() {
                     ))}
                 </div>
 
-                {/* Real specs section */}
                 <motion.div
                     className="bg-gradient-to-br from-gray-900/60 to-gray-800/40 rounded-2xl border border-gray-700/30 backdrop-blur-sm p-8"
                     initial={{ opacity: 0, y: 30 }}
@@ -131,7 +129,6 @@ function Features() {
                     </div>
                 </motion.div>
 
-                {/* Bottom accent */}
                 <motion.div
                     className="mt-16 flex justify-center"
                     initial={{ opacity: 0 }}

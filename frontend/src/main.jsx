@@ -8,7 +8,6 @@ window.addEventListener('beforeunload', () => {
   window.scrollTo(0, 0);
 });
 
-// Also ensure page starts at top
 window.history.scrollRestoration = 'manual';
 
 createRoot(document.getElementById("root")).render(

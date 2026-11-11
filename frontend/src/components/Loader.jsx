@@ -14,10 +14,8 @@ function Loader() {
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ duration: 0.3 }}
             >
-                {/* Outer glow ring */}
                 <div className="absolute inset-0 rounded-full bg-gradient-to-r from-brand via-brand-light to-accent opacity-20 blur-sm"></div>
 
-                {/* Rotating gradient ring */}
                 <motion.div
                     className="absolute inset-0 rounded-full border-4 border-transparent"
                     style={{

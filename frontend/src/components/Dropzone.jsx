@@ -13,7 +13,6 @@ function Dropzone({ onFile, onError, loading, rateLimited }) {
     const [dragOver, setDragOver] = useState(false);
     const [isMobile, setIsMobile] = useState(false);
 
-    // Detect mobile screen width (<768px)
     useEffect(() => {
         const checkMobile = () => setIsMobile(window.innerWidth < 768);
         checkMobile();
@@ -126,7 +125,7 @@ function Dropzone({ onFile, onError, loading, rateLimited }) {
             try {
                 const slicedBlob = file.slice(0, maxUploadSize);
                 fileToUpload = new File([slicedBlob], file.name, { type: file.type });
-            } catch (error) {
+            } catch {
                 onError && onError("Failed to process large file. Please try a smaller file or different format.");
                 return;
             }
@@ -184,7 +183,6 @@ function Dropzone({ onFile, onError, loading, rateLimited }) {
         }
     }
 
-    // Display text
     function getDisplayText() {
         if (rateLimited) return "Rate limited. Please wait before uploading.";
         if (loading) return "Processing your file...";
@@ -213,22 +211,18 @@ function Dropzone({ onFile, onError, loading, rateLimited }) {
                 whileHover={isDisabled ? {} : { scale: 1.02 }}
                 whileTap={isDisabled ? {} : { scale: 0.98 }}
             >
-                {/* active glow */}
                 {dragOver && !isDisabled && (
                     <div className="absolute inset-0 bg-gradient-to-br from-brand/5 to-transparent rounded-2xl pointer-events-none"></div>
                 )}
 
-                {/* Icon */}
                 <Upload
                     className={`w-12 h-12 mb-4 transition-colors duration-300 ${isDisabled ? 'text-gray-600' : dragOver ? 'text-brand-light' : 'text-brand'}`}
                 />
 
-                {/* Instruction */}
                 <p className={`text-lg select-none font-medium text-center ${isDisabled ? 'text-gray-600' : 'text-gray-300'}`}>
                     {getDisplayText()}
                 </p>
 
-                {/* Helper tips */}
                 {!isDisabled && (
                     <div className="mt-4 flex flex-col items-center space-y-1 text-center">
                         <p className="text-gray-500 text-sm select-none font-medium">Supports: MP3, WAV, FLAC, AAC, OGG, M4A</p>
@@ -237,7 +231,6 @@ function Dropzone({ onFile, onError, loading, rateLimited }) {
                     </div>
                 )}
 
-                {/* Hidden input */}
                 <input
                     id="file-upload"
                     type="file"

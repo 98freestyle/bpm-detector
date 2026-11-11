@@ -55,12 +55,12 @@ backend/*.pyc
 security_test_report_*.json
 rate_limit_test_*.json
 
-# Documentation files (AI context)
-
-
 # Backend service logs
 backend/logs/
 *.log.*
+
+# Local databases
+*.db
 
 # Backup files
 *.bak

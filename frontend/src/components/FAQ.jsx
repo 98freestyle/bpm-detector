@@ -11,7 +11,6 @@ import { useState } from "react";
 function FAQ() {
     const [openIndex, setOpenIndex] = useState(null);
 
-    // FAQ content
     const faqs = [
         {
             question: "How accurate is the BPM detection?",
@@ -35,7 +34,7 @@ function FAQ() {
         },
         {
             question: "Can I use this for commercial purposes?",
-            answer: "Yes, BPM Analyzer is free to use for both personal and commercial projects. Perfect for DJ sets, music production, and playlist organization."
+            answer: "Yes, DJBPM is free to use for both personal and commercial projects. Perfect for DJ sets, music production, and playlist organization."
         }
     ];
 
@@ -50,7 +49,6 @@ function FAQ() {
     return (
         <section id="faq" className="py-20 bg-gray-950 border-t border-gray-800/50">
             <div className="max-w-4xl mx-auto px-6">
-                {/* Section header */}
                 <motion.div
                     initial={{ opacity: 0, y: 30 }}
                     whileInView={{ opacity: 1, y: 0 }}
@@ -69,7 +67,6 @@ function FAQ() {
                     </p>
                 </motion.div>
 
-                {/* FAQ list */}
                 <div className="space-y-4">
                     {faqs.map((faq, index) => (
                         <motion.div
@@ -80,7 +77,6 @@ function FAQ() {
                             transition={{ delay: index * 0.05, duration: 0.6 }}
                             viewport={{ once: true }}
                         >
-                            {/* FAQ question */}
                             <button
                                 onClick={() => toggleFAQ(index)}
                                 className="w-full p-6 text-left flex items-center justify-between hover:bg-gray-800/30 transition-colors duration-200"
@@ -89,7 +85,6 @@ function FAQ() {
                                     {faq.question}
                                 </h3>
 
-                                {/* Animated chevron */}
                                 <motion.div
                                     animate={{ rotate: openIndex === index ? 180 : 0 }}
                                     transition={{ duration: 0.3 }}
@@ -100,7 +95,6 @@ function FAQ() {
                                 </motion.div>
                             </button>
 
-                            {/* FAQ answer */}
                             <AnimatePresence>
                                 {openIndex === index && (
                                     <motion.div
@@ -122,7 +116,6 @@ function FAQ() {
                     ))}
                 </div>
 
-                {/* Bottom accent divider */}
                 <motion.div
                     className="mt-16 flex justify-center"
                     initial={{ opacity: 0 }}

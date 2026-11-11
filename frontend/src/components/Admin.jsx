@@ -74,7 +74,6 @@ function Admin() {
     return (
         <div className="min-h-screen bg-gray-950 text-gray-100 p-6">
             <div className="max-w-5xl mx-auto">
-                {/* Header */}
                 <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -100,7 +99,6 @@ function Admin() {
                     </div>
                 </motion.div>
 
-                {/* Stats */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
                     <StatCard
                         title="Total Requests"
@@ -125,7 +123,6 @@ function Admin() {
                     />
                 </div>
 
-                {/* Daily Activity */}
                 <ChartCard title="Daily Activity (Last 7 Days)">
                     <div className="space-y-3">
                         {data.daily_stats.map((day) => (
@@ -152,7 +149,6 @@ function Admin() {
                     </div>
                 </ChartCard>
 
-                {/* Recent Errors */}
                 <ChartCard title="Recent Error Log">
                     <div className="space-y-2 max-h-96 overflow-y-auto">
                         {data.errors.recent_errors.length === 0 && (

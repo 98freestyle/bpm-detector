@@ -34,14 +34,14 @@ export function useBPMDetector() {
                         try {
                             const result = JSON.parse(xhr.responseText);
                             resolve(result);
-                        } catch (e) {
+                        } catch {
                             reject(new Error('Invalid response format'));
                         }
                     } else {
                         try {
                             const errorData = JSON.parse(xhr.responseText);
                             reject(new Error(errorData.error || `Request failed with status ${xhr.status}`));
-                        } catch (e) {
+                        } catch {
                             reject(new Error(`Request failed with status ${xhr.status}`));
                         }
                     }

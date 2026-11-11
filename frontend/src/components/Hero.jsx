@@ -33,7 +33,6 @@ function Hero() {
         UNKNOWN: "Upload failed. Please try again with a different file.",
     };
 
-    // Restore any existing rate limit countdown
     useEffect(() => {
         const storedRateLimit = localStorage.getItem("rate_limit_end");
         if (storedRateLimit) {
@@ -49,7 +48,6 @@ function Hero() {
         }
     }, []);
 
-    // Countdown handler
     useEffect(() => {
         let interval;
         if (isRateLimited && rateLimitCountdown > 0) {
@@ -169,13 +167,6 @@ function Hero() {
             };
 
             setAnalysisHistory((prev) => [analysisResult, ...prev].slice(0, MAX_HISTORY_ITEMS));
-            console.log(
-                `🎵 ${result.bpm} BPM detected | ${analysisResult.fileName} (${(
-                    file.size /
-                    1024 /
-                    1024
-                ).toFixed(1)}MB) | ${totalTime}s total`
-            );
             setLoading(false);
         } catch (err) {
             const endTime = performance.now();
@@ -187,7 +178,6 @@ function Hero() {
 
     return (
         <section className="relative px-6 py-32 h-screen bg-gradient-to-br from-gray-950 via-gray-900 to-gray-950 overflow-hidden">
-            {/* Background visuals */}
             <div className="absolute inset-0 overflow-hidden pointer-events-none">
                 <div className="bg-circle-1"></div>
                 <div className="bg-circle-2"></div>
@@ -208,7 +198,6 @@ function Hero() {
             </div>
 
             <div className="relative z-10 max-w-4xl mx-auto h-full flex flex-col justify-center">
-                {/* Header */}
                 <motion.div
                     initial={{ opacity: 0, y: 30 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -246,7 +235,6 @@ function Hero() {
                     </div>
                 </motion.div>
 
-                {/* Dropzone & Loader */}
                 <motion.div
                     className="w-full max-w-2xl mx-auto"
                     initial={{ opacity: 0, y: 40 }}
@@ -291,7 +279,6 @@ function Hero() {
                     />
                 </motion.div>
 
-                {/* Scroll Down Arrow */}
                 <div className="mt-auto pt-12 flex justify-center">
                     <motion.button
                         onClick={() => {

@@ -4,11 +4,13 @@ Focused Rate Limiting Test for BPM Analyzer
 Tests rate limiting with proper headers
 """
 
+import os
+import sys
 import requests
 import time
 from datetime import datetime
 
-BASE_URL = "https://djbpm.club"
+BASE_URL = (sys.argv[1] if len(sys.argv) > 1 else os.environ.get("BPM_TEST_URL", "http://localhost:8001")).rstrip("/")
 ANALYZE_ENDPOINT = f"{BASE_URL}/api/analyze"
 
 def create_test_file():
@@ -32,7 +34,7 @@ def test_rate_limiting():
     test_file = create_test_file()
     results = []
     
-    # Send 8 requests (should hit 5/hour limit)
+    # Send 8 requests (should hit the rate limit)
     for i in range(8):
         try:
             start_time = time.time()
@@ -109,10 +111,10 @@ def test_rate_limiting():
 
 if __name__ == "__main__":
     print("⚠️  Make sure you've temporarily lowered rate limits in backend/app.py!")
-    print("⚠️  Current test expects ~5 requests/hour limit")
+    print("⚠️  The test sends 8 requests and expects some to be rate limited")
     input("Press Enter to continue...")
     
     test_rate_limiting()
     
     print(f"\n🔧 Don't forget to restore your rate limits after testing!")
-    print("🔧 Restart backend with: sudo systemctl restart bmp-analyzer")
+    print("🔧 Restart backend with: sudo systemctl restart bpm-analyzer")

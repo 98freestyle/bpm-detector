@@ -4,6 +4,8 @@ BPM Analyzer Comprehensive Security Test Suite
 Tests file validation, parameter checking, header inspection, and concurrent load handling
 """
 
+import os
+import sys
 import requests
 import time
 import threading
@@ -12,7 +14,7 @@ from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 # Configuration
-BASE_URL = "https://djbpm.club"
+BASE_URL = (sys.argv[1] if len(sys.argv) > 1 else os.environ.get("BPM_TEST_URL", "http://localhost:8001")).rstrip("/")
 ANALYZE_ENDPOINT = f"{BASE_URL}/api/analyze"
 HEALTH_ENDPOINT = f"{BASE_URL}/api/health"
 
